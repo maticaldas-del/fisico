@@ -64,3 +64,6 @@ Releer después de cargar (que aparezca en la pantalla que corresponde).
 - 31/10/2026: peso en kilos con un decimal.
 - 31/10/2026: al anotar una serie, la app avisa si superó la última vez (más peso, o el mismo peso con más repeticiones).
 - 31/10/2026: lo que come lo pasa por el chat y lo carga Claude.
+- 31/10/2026: la app la usa SÓLO él. Nadie puede crearse una cuenta solo (Firebase → Authentication → Configuración → Acciones del
+  usuario: "Habilitar la creación" y "Habilitar la eliminación" apagados). Un usuario nuevo se agrega sólo desde la consola de Firebase
+  y sólo con su permiso; además las reglas de la base dejan entrar únicamente a su UID (yGnUEddKRxWUZCJKrkmpbxrzrXG2).
