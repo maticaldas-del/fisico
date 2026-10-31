@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Leer y cargar los datos de Físico en Firebase sin pasar por la app (lo usa el chat de Claude en la nube).
 
-Necesita la llave de la base en la variable FIREBASE_SECRET (está en la configuración del entorno de la nube,
+Necesita la llave de la base: un secreto de la nube para el sitio de la base (lo agrega solo) o la variable FIREBASE_SECRET (en el entorno de la nube,
 NUNCA en el repositorio). Los datos que se cargan tampoco van al repositorio: se escriben en /tmp.
 
   python3 tools/fisico.py leer comidas --desde 2026-10-01     # también: peso, entrenos, rutinas, config, fotos
@@ -11,28 +11,31 @@ NUNCA en el repositorio). Los datos que se cargan tampoco van al repositorio: se
 Formato de carga: {"peso":[...],"comidas":[...],"entrenos":[...],"rutinas":[...],"config":{...},"borrar":["comidas/ID"]}
 Con "id" pisa ese registro; sin "id" agrega uno nuevo. "config" se mezcla con lo que hay.
 """
-import base64, io, json, os, re, sys, time, urllib.parse, urllib.request
+import base64, io, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
 
 BASE = "https://fisico-e6489-default-rtdb.firebaseio.com/fisico"
 RAMAS = ("peso", "comidas", "entrenos", "rutinas")
 FECHA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
-def _llave():
-    s = os.environ.get("FIREBASE_SECRET", "").strip()
-    if not s:
-        sys.exit("❌ Falta FIREBASE_SECRET en el entorno (se configura en el entorno de la nube, no en el repo).")
-    return s
-
-
 def pedir(metodo, ruta, datos=None, extra=None):
-    q = {"auth": _llave()}
+    # La llave la puede poner el entorno de la nube solo (un "secreto" guardado para este sitio, que Claude no ve) o
+    # venir en FIREBASE_SECRET. Si no hay ninguna de las dos, la base contesta "Permission denied".
+    q = {}
+    s = os.environ.get("FIREBASE_SECRET", "").strip()
+    if s:
+        q["auth"] = s
     q.update(extra or {})
     url = BASE + "/" + ruta + ".json?" + urllib.parse.urlencode(q)
     cuerpo = None if datos is None else json.dumps(datos).encode()
     req = urllib.request.Request(url, data=cuerpo, method=metodo, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.loads(r.read() or b"null")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(r.read() or b"null")
+    except urllib.error.HTTPError as e:
+        if e.code in (401, 403):
+            sys.exit("❌ La base no dejó pasar: falta la llave (el secreto de la nube para fisico-e6489-default-rtdb.firebaseio.com).")
+        raise
 
 
 def nuevo_id(rama):
