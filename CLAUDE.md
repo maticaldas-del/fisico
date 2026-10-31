@@ -58,15 +58,17 @@ Fotos: en la pantalla Fotos, elegir la fecha y subir el archivo (en Chrome se pu
 Releer después de cargar (que aparezca en la pantalla que corresponde).
 
 ### Desde el chat en la nube (31/10/2026, él eligió que la nube también cargue datos)
-En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la base usando la llave `FIREBASE_SECRET`
-(un "secreto de la base de datos" de Firebase, guardado SÓLO en la configuración del entorno de la nube, nunca en el repo ni en un mensaje).
+En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la base. La llave es un secreto del entorno de la nube
+(tipo "GCP access token (with Service Account Key)", con la clave de la cuenta de servicio de Firebase Admin, para el sitio
+`fisico-e6489-default-rtdb.firebaseio.com`): la nube la agrega sola a cada pedido y Claude nunca la ve. Nunca en el repo ni en un mensaje.
+(Si algún día se usa la variable `FIREBASE_SECRET`, el script también la toma.)
 - Leer: `python3 tools/fisico.py leer comidas --desde 2026-10-01` (también `peso`, `entrenos`, `rutinas`, `config`, `fotos`).
 - Cargar: escribir el bloque (mismo formato de arriba) en `/tmp/carga.json` —nunca dentro del repo, que es público— y
   `python3 tools/fisico.py cargar /tmp/carga.json`. Después releer con `leer` para confirmar.
 - Foto que manda por el chat, si queda como archivo: `python3 tools/fisico.py foto /tmp/foto.jpg --fecha 2026-10-31 --nota "de frente"`
   (necesita Pillow: `pip install pillow`). Si la foto no queda como archivo, decirle que la suba él desde la pantalla Fotos.
 - Si falla por red: el entorno de la nube tiene que dejar salir a `fisico-e6489-default-rtdb.firebaseio.com`.
-- Si dice que falta FIREBASE_SECRET: pedirle a Matías que la agregue en la configuración del entorno de la nube (no por el chat).
+- Si dice que la base no deja pasar: pedirle a Matías que revise el secreto del entorno de la nube (no se pasa por el chat).
 
 ## Reglas de Matías (una por renglón, con fecha; si una cambia, se reemplaza el renglón)
 - 31/10/2026: las rutinas van cambiando: se arman por el chat, no hay una fija por día.
