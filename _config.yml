@@ -1,0 +1,4 @@
+# GitHub Pages: se publica sólo la app. Las notas (CLAUDE.md, README) no salen en la dirección de la web.
+exclude:
+  - CLAUDE.md
+  - README.md

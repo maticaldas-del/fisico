@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta name="robots" content="noindex,nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Físico</title>
+<meta name="description" content="Entreno, dieta, peso, medidas y fotos.">
+<meta name="theme-color" content="#0f0f11">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Físico">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-auth-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-database-compat.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&display=swap');
+:root{
+  --bg:#0f0f11;--surface:#18181c;--surface2:#1f1f24;
+  --border:#2a2a30;--border2:#3a3a42;
+  --accent:#4ade80;--accent-dark:#052e16;--blue:#60a5fa;--amber:#f59e0b;--red:#f87171;
+  --text:#f1f1f3;--muted:#8a8a99;--r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:1.4;-webkit-text-size-adjust:100%}
+body{padding:env(safe-area-inset-top) 0 calc(76px + env(safe-area-inset-bottom))}
+h1{font-family:Syne,system-ui,sans-serif;font-weight:800;font-size:1.5rem;margin:0 0 14px}
+h2{font-size:1.05rem;margin:0 0 10px;font-weight:600}
+.wrap{max-width:720px;margin:0 auto;padding:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.mu{color:var(--muted);font-size:.85rem}
+.big{font-size:1.7rem;font-weight:700}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{min-width:0}
+.sp{justify-content:space-between}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+button,.btn{font:inherit;min-height:44px;padding:8px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);cursor:pointer}
+button:active{transform:scale(.98)}
+.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-dark);font-weight:700}
+.peligro{color:var(--red);border-color:#5b2a2a}
+.chico{min-height:36px;padding:4px 10px;font-size:.85rem}
+.x{min-height:36px;min-width:36px;padding:0;border:none;background:transparent;color:var(--muted);font-size:1.1rem}
+input,select,textarea{font:inherit;min-height:44px;width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--bg);color:var(--text)}
+textarea{min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:.85rem}
+label{display:block;font-size:.8rem;color:var(--muted);margin:0 0 4px}
+.campo{flex:1 1 90px}
+.bar{height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:5px}
+.chip{display:inline-flex;align-items:center;min-height:40px;padding:6px 14px;border:1px solid var(--border2);border-radius:999px;background:transparent;color:var(--text);font-size:.9rem}
+.chip.on{background:var(--accent);color:var(--accent-dark);border-color:var(--accent);font-weight:700}
+.lista>div{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.lista>div:last-child{border-bottom:none}
+.lista .gr{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.serie{display:inline-flex;align-items:center;gap:4px;background:var(--surface2);border-radius:8px;padding:6px 6px 6px 10px;margin:4px 4px 0 0;font-size:.9rem}
+nav#nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:4px 0 calc(4px + env(safe-area-inset-bottom));z-index:50}
+nav#nav button{flex:1;border:none;background:transparent;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.68rem;padding:4px 0;min-height:56px}
+nav#nav button span{font-size:1.35rem;line-height:1}
+nav#nav button.on{color:var(--accent)}
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border2);padding:10px 16px;border-radius:10px;z-index:200;display:none;max-width:90vw;text-align:center}
+#toast.ok{border-color:var(--accent)}#toast.err{border-color:var(--red)}
+#login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;padding:16px;z-index:300}
+#cargando{text-align:center;padding:60px 16px;color:var(--muted)}
+.fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:6px}
+.fotos img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:8px;display:block;cursor:pointer;background:var(--surface2)}
+#visor{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:250;display:none;flex-direction:column}
+#visor img{flex:1;min-height:0;width:100%;object-fit:contain}
+svg.graf{width:100%;height:auto;display:block}
+details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36px;display:flex;align-items:center}
+.estado{font-size:.75rem;color:var(--muted);text-align:center;margin-top:6px}
+</style>
+</head>
+<body>
+<div id="login"><div class="card" style="width:100%;max-width:380px">
+  <h1>Físico</h1>
+  <label for="l-mail">Mail</label><input id="l-mail" type="email" autocomplete="username">
+  <div style="height:10px"></div>
+  <label for="l-pass">Contraseña</label><input id="l-pass" type="password" autocomplete="current-password">
+  <div style="height:14px"></div>
+  <button class="pri" style="width:100%" onclick="entrar()">Entrar</button>
+  <div id="l-err" class="mu" style="color:var(--red);margin-top:10px"></div>
+</div></div>
+<div class="wrap" id="app"><div id="cargando">Cargando…</div></div>
+<nav id="nav" style="display:none">
+  <button data-p="inicio" onclick="ir('inicio')"><span>🏠</span>Inicio</button>
+  <button data-p="peso" onclick="ir('peso')"><span>⚖️</span>Peso</button>
+  <button data-p="entreno" onclick="ir('entreno')"><span>🏋️</span>Entreno</button>
+  <button data-p="dieta" onclick="ir('dieta')"><span>🍽️</span>Dieta</button>
+  <button data-p="fotos" onclick="ir('fotos')"><span>📸</span>Fotos</button>
+  <button data-p="ajustes" onclick="ir('ajustes')"><span>⚙️</span>Ajustes</button>
+</nav>
+<div id="toast"></div>
+<div id="visor">
+  <div class="row sp" style="padding:10px 12px"><span id="v-txt" class="mu"></span><button class="x" style="font-size:1.6rem;color:#fff" onclick="cerrarVisor()" aria-label="Cerrar">✕</button></div>
+  <img id="v-img" alt="">
+  <div class="row sp" style="padding:10px 12px calc(10px + env(safe-area-inset-bottom))">
+    <button onclick="moverVisor(-1)">‹ Anterior</button>
+    <button class="peligro chico" onclick="borrarFoto()">Borrar</button>
+    <button onclick="moverVisor(1)">Siguiente ›</button>
+  </div>
+</div>
+<script>
+// ── LA VERSIÓN Y LOS CAMBIOS ──
+// Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
+// Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
+const APP_VERSION='1.00';
+const APP_CAMBIOS=[
+  {v:'1.00',f:'31/10',h:'17:30',c:[{n:3,t:'Primera versión: inicio, peso y medidas, entreno con "la última vez", dieta con comidas frecuentes, fotos y ajustes.'}]},
+];
+const CAMBIO_NIVEL={1:{txt:'leve',col:'#22c55e'},2:{txt:'mediano',col:'#eab308'},3:{txt:'importante',col:'#ef4444'}};
+
+// La configuración de Firebase no es secreta: lo que protege los datos son las reglas de la base (sólo la cuenta de Matías).
+const FIREBASE_CONFIG={
+  apiKey:"AIzaSyDY4hhtlXE6VMXJs0cK9iA32zo4KrPzllM",
+  authDomain:"fisico-e6489.firebaseapp.com",
+  databaseURL:"https://fisico-e6489-default-rtdb.firebaseio.com",
+  projectId:"fisico-e6489",
+  storageBucket:"fisico-e6489.firebasestorage.app",
+  messagingSenderId:"837966887500",
+  appId:"1:837966887500:web:af12010d9e1938302252e9"
+};
+const RAIZ='fisico';
+// Lo que se escucha en vivo. Las fotos grandes (fotosFull) NO: se bajan de a una cuando se abren.
+const RAMAS=['peso','entrenos','rutinas','comidas','config','fotos'];
+const CACHE_KEY='fisico_cache_v1',COLA_KEY='fisico_cola_v1';
+
+let db=null,usuario=null,pagina='inicio';
+let S={peso:{},entrenos:{},rutinas:{},comidas:{},config:{},fotos:{}};
+let diaDieta=null,rangoPeso=60,ejGraf='';
+
+// ── AYUDAS ──
+const $=id=>document.getElementById(id);
+const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const num=v=>{if(v===''||v==null)return null;const n=parseFloat(String(v).replace(',','.'));return isFinite(n)?n:null;};
+const fmt=(n,d=0)=>n==null||!isFinite(n)?'–':Number(n).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtKg=n=>n==null?'–':(Math.round(n*10)/10).toLocaleString('es-AR',{maximumFractionDigits:1});
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+const hoy=()=>ymd(new Date());
+function sumarDias(f,n){const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return ymd(d);}
+const DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
+function fechaLinda(f){if(!f)return '';const d=new Date(f+'T12:00:00');return DIAS[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1);}
+const lista=o=>Object.entries(o||{}).map(([id,v])=>Object.assign({id},v));
+const nuevoId=()=>db?db.ref().push().key:('L'+Date.now()+Math.random().toString(36).slice(2,6));
+const editando=()=>{const a=document.activeElement;return a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);};
+let _toastT;
+function toast(t,tipo='ok',ms=2600){const el=$('toast');el.textContent=t;el.className=tipo;el.style.display='block';clearTimeout(_toastT);_toastT=setTimeout(()=>el.style.display='none',ms);}
+
+// ── GUARDAR: todo pasa por acá. Primero queda en una cola en el teléfono y después sube a la base; si no hay
+// internet (o se cierra la app sin señal) la cola se vuelve a mandar sola cuando vuelve. Nunca se pierde lo cargado. ──
+function leerCola(){try{return JSON.parse(localStorage.getItem(COLA_KEY)||'[]');}catch(_){return [];}}
+function grabarCola(c){try{localStorage.setItem(COLA_KEY,JSON.stringify(c));}catch(_){}}
+function aplicarLocal(ruta,val){
+  const p=ruta.split('/');let o=S;
+  for(let i=0;i<p.length-1;i++){if(o[p[i]]==null||typeof o[p[i]]!=='object')o[p[i]]={};o=o[p[i]];}
+  if(val===null)delete o[p[p.length-1]];else o[p[p.length-1]]=val;
+}
+function guardar(ruta,val){
+  // ruta relativa a fisico/ (ej. "peso/-Nabc"). val null = borrar.
+  const sinFull=!ruta.startsWith('fotosFull/');
+  if(sinFull)aplicarLocal(ruta,val);
+  const item={k:Date.now()+Math.random(),ruta,val};
+  if(sinFull){const c=leerCola();c.push(item);grabarCola(c);}
+  pintarPronto();
+  if(!db)return Promise.resolve();
+  return db.ref(RAIZ+'/'+ruta).set(val).then(()=>{
+    if(sinFull)grabarCola(leerCola().filter(x=>x.k!==item.k));
+  }).catch(e=>{toast('No se pudo guardar: '+(e&&e.message||e),'err',5000);});
+}
+function mandarCola(){
+  const c=leerCola();if(!c.length||!db)return;
+  c.forEach(item=>db.ref(RAIZ+'/'+item.ruta).set(item.val).then(()=>grabarCola(leerCola().filter(x=>x.k!==item.k))).catch(()=>{}));
+}
+function guardarCache(){try{const c=Object.assign({},S);delete c.fotos;localStorage.setItem(CACHE_KEY,JSON.stringify(c));}catch(_){}}
+function leerCache(){try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(c)for(const k of RAMAS)if(c[k])S[k]=c[k];return !!c;}catch(_){return false;}}
+
+// ── PINTAR ──
+let _pintarT=null,_pendiente=false;
+function pintarPronto(){clearTimeout(_pintarT);_pintarT=setTimeout(pintar,40);}
+function pintar(){
+  if(editando()){_pendiente=true;return;}
+  _pendiente=false;
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===pagina));
+  const f={inicio:pInicio,peso:pPeso,entreno:pEntreno,dieta:pDieta,fotos:pFotos,ajustes:pAjustes}[pagina]||pInicio;
+  $('app').innerHTML=f();
+  if(pagina==='fotos')pintarMiniaturas();
+}
+document.addEventListener('focusout',()=>setTimeout(()=>{if(_pendiente)pintar();},250));
+function ir(p){pagina=p;if(location.hash!=='#'+p)history.replaceState(null,'','#'+p);window.scrollTo(0,0);pintar();}
+window.addEventListener('hashchange',()=>{const p=location.hash.slice(1);if(p&&p!==pagina){pagina=p;pintar();}});
+
+// Gráfico de línea simple (sin librerías). pts=[{f:'2026-10-01',y:82}]
+function grafico(pts,{color='#4ade80',dec=1,unidad=''}={}){
+  if(pts.length<2)return '<div class="mu">Con dos datos o más aparece el gráfico.</div>';
+  const W=320,H=120,P=8;
+  const xs=pts.map(p=>new Date(p.f+'T12:00:00').getTime()),ys=pts.map(p=>p.y);
+  let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  if(x1===x0)x1=x0+1;if(y1===y0){y1+=1;y0-=1;}
+  const X=x=>P+(x-x0)/(x1-x0)*(W-2*P),Y=y=>H-P-(y-y0)/(y1-y0)*(H-2*P);
+  const d=pts.map((p,i)=>X(xs[i]).toFixed(1)+','+Y(p.y).toFixed(1)).join(' ');
+  const ult=pts[pts.length-1];
+  return `<svg class="graf" viewBox="0 0 ${W} ${H+16}" role="img" aria-label="Gráfico">
+    <line x1="${P}" y1="${Y(y1)}" x2="${W-P}" y2="${Y(y1)}" stroke="#2a2a30"/><line x1="${P}" y1="${Y(y0)}" x2="${W-P}" y2="${Y(y0)}" stroke="#2a2a30"/>
+    <text x="${W-P}" y="${Y(y1)-2}" fill="#8a8a99" font-size="9" text-anchor="end">${fmt(y1,dec)}${unidad}</text>
+    <text x="${W-P}" y="${Y(y0)+10}" fill="#8a8a99" font-size="9" text-anchor="end">${fmt(y0,dec)}${unidad}</text>
+    <polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${d}"/>
+    <circle cx="${X(xs[xs.length-1])}" cy="${Y(ult.y)}" r="4" fill="${color}"/>
+    <text x="${P}" y="${H+12}" fill="#8a8a99" font-size="9">${fechaLinda(pts[0].f)}</text>
+    <text x="${W-P}" y="${H+12}" fill="#8a8a99" font-size="9" text-anchor="end">${fechaLinda(ult.f)}</text>
+  </svg>`;
+}
+function barra(valor,meta,color){
+  const pct=meta?Math.min(100,Math.round(valor/meta*100)):0;
+  return `<div class="bar"><i style="width:${pct}%;background:${color||'var(--accent)'}"></i></div>`;
+}
+
+// ── DATOS DERIVADOS ──
+const pesosOrd=()=>lista(S.peso).filter(p=>p.kg!=null).sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:(a.t||0)-(b.t||0));
+const medidasOrd=()=>lista(S.peso).sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:(a.t||0)-(b.t||0));
+const rutinasOrd=()=>lista(S.rutinas).sort((a,b)=>(a.orden||0)-(b.orden||0)||String(a.n).localeCompare(b.n));
+const entrenosOrd=()=>lista(S.entrenos).sort((a,b)=>a.f<b.f?1:a.f>b.f?-1:(b.t||0)-(a.t||0));
+const entrenoEnCurso=()=>entrenosOrd().find(e=>e.estado==='en curso');
+const comidasDe=f=>lista(S.comidas).filter(c=>c.f===f).sort((a,b)=>(a.t||0)-(b.t||0));
+const meta=k=>num((S.config||{})[k]);
+function totales(cs){const t={kcal:0,p:0,c:0,g:0};for(const x of cs){t.kcal+=num(x.kcal)||0;t.p+=num(x.p)||0;t.c+=num(x.c)||0;t.g+=num(x.g)||0;}return t;}
+function proximaRutina(){
+  const rs=rutinasOrd();if(!rs.length)return null;
+  const ult=entrenosOrd().find(e=>e.estado!=='en curso'&&e.rutina);
+  if(!ult)return rs[0];
+  const i=rs.findIndex(r=>r.id===ult.rutina);
+  return rs[(i+1)%rs.length]||rs[0];
+}
+const normN=t=>String(t||'').trim().toLowerCase();
+// Lo de la última vez de un ejercicio (sin contar el entreno de hoy).
+function ultimaVez(nombre,salvo){
+  for(const e of entrenosOrd()){
+    if(e.id===salvo)continue;
+    const ej=(e.ej||[]).find(x=>normN(x.n)===normN(nombre));
+    if(ej&&(ej.series||[]).length)return {f:e.f,series:ej.series};
+  }
+  return null;
+}
+function mejor(series){let b=null;for(const s of series||[]){const kg=num(s.kg)||0,r=num(s.r)||0;if(!b||kg>b.kg||(kg===b.kg&&r>b.r))b={kg,r};}return b;}
+const txtSeries=ss=>(ss||[]).map(s=>(s.r||0)+'×'+(num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso')).join(' · ');
+
+// ── INICIO ──
+function pInicio(){
+  const ps=pesosOrd(),u=ps[ps.length-1],ant=ps[ps.length-2];
+  const dif=u&&ant?u.kg-ant.kg:null;
+  const t=totales(comidasDe(hoy()));
+  const mk=meta('kcal'),mp=meta('p');
+  const enc=entrenoEnCurso(),prox=proximaRutina();
+  const ultEnt=entrenosOrd().find(e=>e.estado!=='en curso');
+  let entTxt;
+  if(enc)entTxt=`<div style="font-weight:600">${esc(enc.rutinaN||'Entreno')} · en curso</div><button class="pri" style="margin-top:8px" onclick="ir('entreno')">Seguir ›</button>`;
+  else if(prox)entTxt=`<div style="font-weight:600">Te toca: ${esc(prox.n)}</div><div class="mu">${(prox.ejercicios||[]).length} ejercicios${ultEnt?' · último entreno '+fechaLinda(ultEnt.f):''}</div><button class="pri" style="margin-top:8px" onclick="empezarEntreno('${prox.id}')">Empezar</button>`;
+  else entTxt=`<div class="mu">Todavía no hay rutinas: las armamos por el chat.</div>`;
+  return `<h1>Hoy · ${fechaLinda(hoy())}</h1>
+  <div class="card" onclick="ir('peso')" style="cursor:pointer"><div class="mu">Peso${u&&u.f!==hoy()?' (último, '+fechaLinda(u.f)+')':' de hoy'}</div>
+    <div class="big">${u?fmtKg(u.kg)+' kg':'–'} ${dif!=null?`<span style="font-size:.95rem;color:${dif<=0?'var(--accent)':'var(--amber)'}">${dif<=0?'▼':'▲'} ${fmtKg(Math.abs(dif))}</span>`:''}</div>
+    ${meta('pesoMeta')&&u?`<div class="mu">Meta ${fmtKg(meta('pesoMeta'))} kg · faltan ${fmtKg(Math.abs(u.kg-meta('pesoMeta')))} kg</div>`:''}</div>
+  <div class="card"><div class="mu">Entreno</div>${entTxt}</div>
+  <div class="card" onclick="ir('dieta')" style="cursor:pointer">
+    <div class="row sp"><span>Calorías</span><b>${fmt(t.kcal)}${mk?' / '+fmt(mk):''}</b></div>${barra(t.kcal,mk)}
+    <div class="row sp" style="margin-top:10px"><span>Proteína</span><b>${fmt(t.p)}${mp?' / '+fmt(mp):''} g</b></div>${barra(t.p,mp,'var(--blue)')}
+  </div>
+  ${htmlCambios()}`;
+}
+function htmlCambios(max=10){
+  const items=[];for(const x of APP_CAMBIOS)for(const c of x.c)if(items.length<max)items.push({v:x.v,f:x.f,h:x.h,n:c.n,t:c.t});
+  const u=APP_CAMBIOS[0];
+  return `<details class="card"><summary>🗓️ Versión ${APP_VERSION} · actualizada el ${u.f} a las ${u.h} · últimos cambios</summary>
+    ${items.map(x=>{const k=CAMBIO_NIVEL[x.n]||CAMBIO_NIVEL[1];return `<div style="border-left:3px solid ${k.col};padding:4px 0 4px 10px;margin:8px 0;font-size:.88rem"><span class="mu">${x.v} · ${x.f} ${x.h} · <span style="color:${k.col}">${k.txt}</span></span><br>${esc(x.t)}</div>`;}).join('')}
+  </details>`;
+}
+
+// ── PESO Y MEDIDAS ──
+const MEDIDAS=[['cintura','Cintura','cm'],['pecho','Pecho','cm'],['brazo','Brazo','cm'],['pierna','Pierna','cm'],['grasa','% grasa','%']];
+function pPeso(){
+  const ps=pesosOrd();const desde=rangoPeso?sumarDias(hoy(),-rangoPeso):'';
+  const pts=ps.filter(p=>!desde||p.f>=desde).map(p=>({f:p.f,y:p.kg}));
+  const ms=medidasOrd();
+  const medHtml=MEDIDAS.map(([k,n,u])=>{const con=ms.filter(x=>num(x[k])!=null);if(!con.length)return '';
+    const a=num(con[0][k]),b=num(con[con.length-1][k]);
+    return `<div class="row sp" style="padding:6px 0"><span>${n}</span><span><b>${fmt(b,1)} ${u}</b>${con.length>1?` <span class="mu">(${b-a<=0?'':'+'}${fmt(b-a,1)} desde ${fechaLinda(con[0].f)})</span>`:''}</span></div>`;}).join('');
+  return `<h1>Peso y medidas</h1>
+  <div class="card">
+    <div class="row"><div class="campo"><label for="p-f">Fecha</label><input id="p-f" type="date" value="${hoy()}"></div>
+    <div class="campo"><label for="p-kg">Peso (kg)</label><input id="p-kg" inputmode="decimal" placeholder="82,4"></div></div>
+    <details style="margin-top:6px"><summary>Agregar medidas (opcional)</summary>
+      <div class="grid2">${MEDIDAS.map(([k,n,u])=>`<div><label for="p-${k}">${n} (${u})</label><input id="p-${k}" inputmode="decimal"></div>`).join('')}</div>
+    </details>
+    <button class="pri" style="width:100%;margin-top:10px" onclick="guardarPeso()">Guardar</button>
+  </div>
+  <div class="card"><div class="row sp"><h2 style="margin:0">Evolución</h2><div class="row">
+    <button class="chip ${rangoPeso===60?'on':''}" onclick="rangoPeso=60;pintar()">60 días</button><button class="chip ${!rangoPeso?'on':''}" onclick="rangoPeso=0;pintar()">Todo</button></div></div>
+    <div style="margin-top:8px">${grafico(pts,{unidad:' kg'})}</div>
+    ${pts.length>1?`<div class="mu">${fmtKg(pts[0].y)} → ${fmtKg(pts[pts.length-1].y)} kg · ${pts[pts.length-1].y-pts[0].y<=0?'':'+'}${fmtKg(pts[pts.length-1].y-pts[0].y)} kg</div>`:''}
+  </div>
+  ${medHtml?`<div class="card"><h2>Medidas</h2>${medHtml}</div>`:''}
+  <div class="card"><h2>Historial</h2><div class="lista">${ms.slice().reverse().slice(0,40).map(p=>`<div><span class="gr">${fechaLinda(p.f)} · <b>${p.kg!=null?fmtKg(p.kg)+' kg':''}</b> <span class="mu">${MEDIDAS.filter(([k])=>num(p[k])!=null).map(([k,n,u])=>n+' '+fmt(num(p[k]),1)+u).join(' · ')}</span></span><button class="x" onclick="borrar('peso/${p.id}','¿Borrar este peso?')" aria-label="Borrar">✕</button></div>`).join('')||'<div class="mu">Todavía no hay nada cargado.</div>'}</div></div>`;
+}
+function guardarPeso(){
+  const f=$('p-f').value||hoy(),kg=num($('p-kg').value);
+  const o={f,t:Date.now()};if(kg!=null)o.kg=kg;
+  for(const [k] of MEDIDAS){const v=num($('p-'+k).value);if(v!=null)o[k]=v;}
+  if(Object.keys(o).length<=2){toast('Poné el peso o alguna medida','err');return;}
+  if(kg!=null&&(kg<30||kg>250)){toast('Ese peso no parece correcto','err');return;}
+  document.activeElement&&document.activeElement.blur();
+  guardar('peso/'+nuevoId(),o);toast('Guardado');
+}
+function borrar(ruta,pregunta){if(pregunta&&!confirm(pregunta))return;guardar(ruta,null);toast('Borrado');}
+
+// ── ENTRENO ──
+function pEntreno(){
+  const enc=entrenoEnCurso(),rs=rutinasOrd(),prox=proximaRutina();
+  let h='<h1>Entreno</h1>';
+  if(enc){
+    h+=`<div class="card"><div class="row sp"><h2 style="margin:0">${esc(enc.rutinaN||'Entreno')} · ${fechaLinda(enc.f)}</h2></div></div>`;
+    (enc.ej||[]).forEach((ej,i)=>{
+      const uv=ultimaVez(ej.n,enc.id),primera=uv&&uv.series[0];
+      const plan=ej.plan?`<span class="mu"> · plan ${esc(ej.plan)}</span>`:'';
+      h+=`<div class="card"><div class="row sp"><b>${esc(ej.n)}</b>${plan}</div>
+        <div class="mu">${uv?'La última vez ('+fechaLinda(uv.f)+'): '+txtSeries(uv.series):'Primera vez que lo hacés'}</div>
+        <div>${(ej.series||[]).map((s,j)=>`<span class="serie">${s.r}×${num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso'}<button class="x" onclick="borrarSerie(${i},${j})" aria-label="Borrar serie">✕</button></span>`).join('')}</div>
+        <div class="row" style="margin-top:8px">
+          <div class="campo"><label for="r-${i}">Repeticiones</label><input id="r-${i}" inputmode="numeric" value="${primera?esc(primera.r):''}"></div>
+          <div class="campo"><label for="k-${i}">Peso (kg)</label><input id="k-${i}" inputmode="decimal" value="${primera&&num(primera.kg)?esc(String(primera.kg).replace('.',',')):''}"></div>
+          <button class="pri" style="align-self:flex-end" onclick="agregarSerie(${i})">+ Serie</button>
+        </div></div>`;
+    });
+    h+=`<div class="card"><label for="e-nuevo">Agregar otro ejercicio</label><div class="row"><input id="e-nuevo" class="campo" placeholder="Ej: Curl de bíceps"><button onclick="agregarEjercicio()">Agregar</button></div></div>
+      <button class="pri" style="width:100%" onclick="terminarEntreno()">Terminar entreno</button>
+      <button class="peligro chico" style="width:100%;margin-top:10px" onclick="borrar('entrenos/${enc.id}','¿Descartar el entreno de hoy?')">Descartar</button>`;
+  } else {
+    h+=`<div class="card"><h2>Empezar</h2>${rs.length?`<div class="row">${rs.map(r=>`<button class="chip ${prox&&prox.id===r.id?'on':''}" onclick="empezarEntreno('${r.id}')">${esc(r.n)}</button>`).join('')}</div>
+      ${prox?`<div class="mu" style="margin-top:8px">Te toca: <b>${esc(prox.n)}</b> (la que sigue a la última que hiciste)</div>`:''}`:'<div class="mu">Todavía no hay rutinas: las armamos por el chat.</div>'}
+      <button style="margin-top:10px" onclick="empezarEntreno('')">Entreno libre</button></div>`;
+    if(rs.length)h+=`<details class="card"><summary>Ver las rutinas</summary>${rs.map(r=>`<div style="margin:10px 0"><b>${esc(r.n)}</b><div class="mu">${(r.ejercicios||[]).map(e=>esc(e.n)+(e.series?' '+e.series+'×'+(e.reps||''):'')).join(' · ')}</div></div>`).join('')}</details>`;
+  }
+  // Progreso por ejercicio
+  const nombres=[...new Set(entrenosOrd().flatMap(e=>(e.ej||[]).filter(x=>(x.series||[]).length).map(x=>x.n)))].sort((a,b)=>a.localeCompare(b));
+  if(nombres.length){
+    if(!ejGraf||!nombres.includes(ejGraf))ejGraf=nombres[0];
+    const pts=entrenosOrd().slice().reverse().map(e=>{const ej=(e.ej||[]).find(x=>normN(x.n)===normN(ejGraf));const b=ej&&mejor(ej.series);return b&&b.kg?{f:e.f,y:b.kg}:null;}).filter(Boolean);
+    h+=`<div class="card"><h2>Progreso</h2><select onchange="ejGraf=this.value;this.blur();pintar()">${nombres.map(n=>`<option ${n===ejGraf?'selected':''}>${esc(n)}</option>`).join('')}</select>
+      <div style="margin-top:8px">${grafico(pts,{unidad:' kg',color:'#60a5fa'})}</div><div class="mu">El peso más alto de cada día.</div></div>`;
+  }
+  const hist=entrenosOrd().filter(e=>e.estado!=='en curso').slice(0,15);
+  h+=`<div class="card"><h2>Últimos entrenos</h2><div class="lista">${hist.map(e=>`<div><span class="gr"><b>${fechaLinda(e.f)}</b> · ${esc(e.rutinaN||'Libre')}<br><span class="mu">${(e.ej||[]).filter(x=>(x.series||[]).length).map(x=>esc(x.n)+' '+txtSeries(x.series)).join(' — ')}</span></span><button class="x" onclick="borrar('entrenos/${e.id}','¿Borrar este entreno?')" aria-label="Borrar">✕</button></div>`).join('')||'<div class="mu">Todavía no hay entrenos.</div>'}</div></div>`;
+  return h;
+}
+function empezarEntreno(rid){
+  if(entrenoEnCurso()){ir('entreno');return;}
+  const r=rid?S.rutinas[rid]:null;
+  const ej=r?(r.ejercicios||[]).map(e=>({n:e.n,plan:(e.series?e.series+'×'+(e.reps||''):'')+(e.kg?' con '+e.kg+' kg':''),series:[]})):[];
+  guardar('entrenos/'+nuevoId(),{f:hoy(),t:Date.now(),estado:'en curso',rutina:rid||'',rutinaN:r?r.n:'Libre',ej});
+  ir('entreno');
+}
+function guardarEnc(enc){const o=Object.assign({},enc);delete o.id;guardar('entrenos/'+enc.id,o);}
+function agregarSerie(i){
+  const enc=entrenoEnCurso();if(!enc)return;
+  const r=num($('r-'+i).value),kg=num($('k-'+i).value);
+  if(!r||r<1){toast('Poné las repeticiones','err');return;}
+  const ej=enc.ej[i];ej.series=ej.series||[];
+  const uv=ultimaVez(ej.n,enc.id),antes=uv&&mejor(uv.series),yaHoy=mejor(ej.series);
+  ej.series.push({r,kg:kg||0});
+  document.activeElement&&document.activeElement.blur();
+  guardarEnc(enc);
+  // Aviso de récord: más peso que lo mejor de la última vez, o el mismo peso con más repeticiones (y que no se haya avisado hoy).
+  const k=kg||0,supera=b=>b&&(k>b.kg||(k===b.kg&&r>b.r));
+  if(antes&&supera(antes)&&!(yaHoy&&(yaHoy.kg>antes.kg||(yaHoy.kg===antes.kg&&yaHoy.r>antes.r))))toast('🔥 ¡Superaste la última vez! ('+txtSeries([antes])+')','ok',4000);
+  else toast('Serie anotada');
+}
+function borrarSerie(i,j){const enc=entrenoEnCurso();if(!enc)return;enc.ej[i].series.splice(j,1);guardarEnc(enc);}
+function agregarEjercicio(){const enc=entrenoEnCurso();const n=$('e-nuevo').value.trim();if(!enc||!n)return;enc.ej=enc.ej||[];enc.ej.push({n,series:[]});document.activeElement&&document.activeElement.blur();guardarEnc(enc);}
+function terminarEntreno(){const enc=entrenoEnCurso();if(!enc)return;
+  const hechas=(enc.ej||[]).reduce((s,e)=>s+(e.series||[]).length,0);
+  if(!hechas&&!confirm('No anotaste ninguna serie. ¿Terminar igual?'))return;
+  enc.estado='hecho';enc.fin=Date.now();guardarEnc(enc);toast('💪 Entreno guardado');}
+
+// ── DIETA ──
+function frecuentes(){
+  const desde=sumarDias(hoy(),-90),m={};
+  for(const c of lista(S.comidas).filter(c=>c.f>=desde&&c.n)){const k=normN(c.n);if(!m[k])m[k]={cant:0,ult:c};m[k].cant++;if((c.t||0)>(m[k].ult.t||0))m[k].ult=c;}
+  return Object.values(m).sort((a,b)=>b.cant-a.cant).slice(0,8).map(x=>x.ult);
+}
+function pDieta(){
+  const f=diaDieta||hoy(),cs=comidasDe(f),t=totales(cs);
+  const M=[['kcal','Calorías','',''],['p','Proteína',' g','var(--blue)'],['c','Carbohidratos',' g','var(--amber)'],['g','Grasas',' g','#c084fc']];
+  const fr=frecuentes();
+  return `<h1>Dieta</h1>
+  <div class="row sp card" style="padding:8px"><button onclick="diaDieta=sumarDias('${f}',-1);pintar()" aria-label="Día anterior">‹</button><b>${f===hoy()?'Hoy, ':''}${fechaLinda(f)}</b><button onclick="diaDieta=sumarDias('${f}',1);pintar()" aria-label="Día siguiente">›</button></div>
+  <div class="card">${M.map(([k,n,u,col])=>{const m=meta(k);return `<div style="margin-bottom:8px"><div class="row sp"><span>${n}</span><b>${fmt(t[k])}${m?' / '+fmt(m):''}${u}</b></div>${barra(t[k],m,col)}</div>`;}).join('')}</div>
+  ${fr.length?`<div class="card"><div class="mu" style="margin-bottom:6px">Con un toque</div><div class="row">${fr.map(c=>`<button class="chip" onclick="repetirComida('${c.id}')">${esc(c.n)}</button>`).join('')}</div></div>`:''}
+  <div class="card"><h2>Comidas</h2><div class="lista">${cs.map(c=>`<div><span class="gr">${esc(c.n)}<br><span class="mu">${fmt(num(c.kcal))} kcal · P ${fmt(num(c.p))} · C ${fmt(num(c.c))} · G ${fmt(num(c.g))}</span></span><button class="x" onclick="borrar('comidas/${c.id}','¿Borrar ${esc(c.n).replace(/'/g,'')}?')" aria-label="Borrar">✕</button></div>`).join('')||'<div class="mu">Nada cargado este día.</div>'}</div></div>
+  <div class="card"><h2>Agregar comida</h2>
+    <label for="c-n">Qué comiste</label><input id="c-n" placeholder="Pollo con arroz">
+    <div class="grid2" style="margin-top:8px">
+      <div><label for="c-kcal">Calorías</label><input id="c-kcal" inputmode="numeric"></div>
+      <div><label for="c-p">Proteína (g)</label><input id="c-p" inputmode="decimal"></div>
+      <div><label for="c-c">Carbohidratos (g)</label><input id="c-c" inputmode="decimal"></div>
+      <div><label for="c-g">Grasas (g)</label><input id="c-g" inputmode="decimal"></div>
+    </div>
+    <button class="pri" style="width:100%;margin-top:10px" onclick="agregarComida()">Guardar</button></div>`;
+}
+function agregarComida(){
+  const n=$('c-n').value.trim();if(!n){toast('Poné qué comiste','err');return;}
+  const o={f:diaDieta||hoy(),t:Date.now(),n};
+  for(const k of ['kcal','p','c','g']){const v=num($('c-'+k).value);if(v!=null)o[k]=v;}
+  document.activeElement&&document.activeElement.blur();
+  guardar('comidas/'+nuevoId(),o);toast('Guardado');
+}
+function repetirComida(id){const c=S.comidas[id];if(!c)return;const o={f:diaDieta||hoy(),t:Date.now(),n:c.n};for(const k of ['kcal','p','c','g'])if(c[k]!=null)o[k]=c[k];guardar('comidas/'+nuevoId(),o);toast('Agregado: '+c.n);}
+
+// ── FOTOS ── Se guardan en la base (no en el repositorio): una chiquita para la lista y una grande que se baja al abrirla.
+let fotosVis=[],visorI=0;const fullCache={};
+function pFotos(){
+  const n=Object.keys(S.fotos||{}).length;
+  return `<h1>Fotos</h1>
+  <div class="card"><div class="row"><div class="campo"><label for="f-f">Fecha de las fotos</label><input id="f-f" type="date" value="${hoy()}"></div>
+    <div class="campo"><label for="f-nota">Nota (opcional)</label><input id="f-nota" placeholder="De frente, en ayunas"></div></div>
+    <label class="btn pri" style="display:flex;align-items:center;justify-content:center;margin-top:10px">📸 Elegir fotos<input id="f-arch" type="file" accept="image/*" multiple style="display:none" onchange="subirFotos(this.files)"></label>
+    <div id="f-estado" class="estado"></div></div>
+  <div id="f-grilla">${n?'':'<div class="card mu">Todavía no hay fotos.</div>'}</div>`;
+}
+function pintarMiniaturas(){
+  const el=$('f-grilla');if(!el)return;
+  const fs=lista(S.fotos).sort((a,b)=>a.f<b.f?1:a.f>b.f?-1:(b.t||0)-(a.t||0));fotosVis=fs;
+  if(!fs.length)return;
+  const grupos={};fs.forEach((x,i)=>{(grupos[x.f]=grupos[x.f]||[]).push(i);});
+  el.innerHTML=Object.keys(grupos).map(f=>`<div class="card"><div class="mu" style="margin-bottom:6px">${fechaLinda(f)} · ${f.slice(0,4)}</div><div class="fotos">${grupos[f].map(i=>`<img src="${fs[i].mini}" alt="Foto ${fechaLinda(f)}" onclick="abrirVisor(${i})" loading="lazy">`).join('')}</div></div>`).join('');
+}
+function achicar(archivo,max,calidad){
+  return new Promise((ok,mal)=>{const url=URL.createObjectURL(archivo);const img=new Image();
+    img.onload=()=>{const k=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL('image/jpeg',calidad));};
+    img.onerror=()=>{URL.revokeObjectURL(url);mal(new Error('no se pudo leer la imagen'));};img.src=url;});
+}
+async function subirFotos(archivos){
+  const f=$('f-f').value||hoy(),nota=$('f-nota').value.trim(),est=$('f-estado');let hechas=0;
+  for(const a of archivos){
+    try{est.textContent='Subiendo '+(hechas+1)+' de '+archivos.length+'…';
+      const full=await achicar(a,1600,.82),mini=await achicar(a,320,.7);const id=nuevoId();
+      fullCache[id]=full;
+      await guardar('fotosFull/'+id,full);
+      await guardar('fotos/'+id,{f,t:Date.now(),mini,nota});hechas++;
+    }catch(e){toast('Una foto no se pudo subir: '+e.message,'err',5000);}
+  }
+  est.textContent=hechas?'✓ '+hechas+' foto'+(hechas===1?'':'s')+' guardada'+(hechas===1?'':'s'):'';
+  pintarMiniaturas();
+}
+function abrirVisor(i){visorI=i;$('visor').style.display='flex';mostrarVisor();}
+function cerrarVisor(){$('visor').style.display='none';}
+function moverVisor(d){if(!fotosVis.length)return;visorI=(visorI+d+fotosVis.length)%fotosVis.length;mostrarVisor();}
+function mostrarVisor(){
+  const x=fotosVis[visorI];if(!x)return cerrarVisor();
+  $('v-txt').textContent=fechaLinda(x.f)+' '+x.f.slice(0,4)+(x.nota?' · '+x.nota:'')+' · '+(visorI+1)+'/'+fotosVis.length;
+  $('v-img').src=fullCache[x.id]||x.mini;
+  if(!fullCache[x.id]&&db)db.ref(RAIZ+'/fotosFull/'+x.id).once('value').then(s=>{if(s.val()){fullCache[x.id]=s.val();if(fotosVis[visorI]&&fotosVis[visorI].id===x.id)$('v-img').src=s.val();}}).catch(()=>{});
+}
+function borrarFoto(){const x=fotosVis[visorI];if(!x||!confirm('¿Borrar esta foto?'))return;guardar('fotosFull/'+x.id,null);guardar('fotos/'+x.id,null);delete fullCache[x.id];cerrarVisor();toast('Foto borrada');}
+
+// ── AJUSTES ──
+function pAjustes(){
+  const c=S.config||{};const v=k=>c[k]!=null?esc(String(c[k]).replace('.',',')):'';
+  return `<h1>Ajustes</h1>
+  <div class="card"><h2>Metas</h2><div class="grid2">
+    <div><label for="m-kcal">Calorías por día</label><input id="m-kcal" inputmode="numeric" value="${v('kcal')}"></div>
+    <div><label for="m-p">Proteína (g)</label><input id="m-p" inputmode="decimal" value="${v('p')}"></div>
+    <div><label for="m-c">Carbohidratos (g)</label><input id="m-c" inputmode="decimal" value="${v('c')}"></div>
+    <div><label for="m-g">Grasas (g)</label><input id="m-g" inputmode="decimal" value="${v('g')}"></div>
+    <div><label for="m-pesoMeta">Peso meta (kg)</label><input id="m-pesoMeta" inputmode="decimal" value="${v('pesoMeta')}"></div>
+  </div><button class="pri" style="width:100%;margin-top:10px" onclick="guardarMetas()">Guardar metas</button></div>
+  <div class="card"><h2>Sesión</h2><div class="mu">${esc(usuario&&usuario.email||'')}</div><button style="margin-top:8px" onclick="salir()">Cerrar sesión</button></div>
+  ${htmlCambios(30)}
+  <details class="card"><summary>📥 Cargar datos (lo usa Claude)</summary>
+    <div class="mu" style="margin:6px 0">Se pega un bloque de datos y se carga todo junto.</div>
+    <textarea id="imp" placeholder='{"comidas":[{"f":"2026-10-31","n":"Avena","kcal":350,"p":12}]}'></textarea>
+    <button class="pri" style="width:100%;margin-top:8px" onclick="importar()">Cargar</button>
+    <div id="imp-res" class="estado"></div>
+  </details>
+  <div class="card"><h2>Copia de seguridad</h2><div class="mu">Baja un archivo con todo lo cargado (sin las fotos grandes).</div><button style="margin-top:8px" onclick="bajarCopia()">Descargar copia</button></div>`;
+}
+function guardarMetas(){const o=Object.assign({},S.config||{});for(const k of ['kcal','p','c','g','pesoMeta']){const v=num($('m-'+k).value);if(v==null)delete o[k];else o[k]=v;}document.activeElement&&document.activeElement.blur();guardar('config',o);toast('Metas guardadas');}
+// Formato: {"peso":[...],"comidas":[...],"entrenos":[...],"rutinas":[...],"config":{...},"borrar":["comidas/ID"]}
+// Cada elemento con "id" pisa ese registro; sin "id" se agrega uno nuevo. "config" se mezcla con lo que hay.
+function importar(){
+  const res=$('imp-res');let d;
+  try{d=JSON.parse($('imp').value);}catch(e){res.textContent='❌ El texto no está bien armado: '+e.message;return;}
+  let n=0;const malos=[];
+  for(const rama of ['peso','comidas','entrenos','rutinas']){
+    if(d[rama]==null)continue;if(!Array.isArray(d[rama])){malos.push(rama+' tiene que ser una lista');continue;}
+    for(const it of d[rama]){
+      if(!it||typeof it!=='object'){malos.push(rama+': renglón vacío');continue;}
+      if(rama!=='rutinas'&&!/^\d{4}-\d{2}-\d{2}$/.test(it.f||'')){malos.push(rama+': falta la fecha (f) en '+JSON.stringify(it).slice(0,60));continue;}
+      if(rama==='rutinas'&&!it.n){malos.push('rutinas: falta el nombre (n)');continue;}
+      const o=Object.assign({},it);const id=o.id||nuevoId();delete o.id;if(o.t==null&&rama!=='rutinas')o.t=Date.now()+n;
+      guardar(rama+'/'+id,o);n++;
+    }
+  }
+  if(d.config&&typeof d.config==='object'){guardar('config',Object.assign({},S.config||{},d.config));n++;}
+  for(const r of d.borrar||[]){if(/^(peso|comidas|entrenos|rutinas)\/[^/]+$/.test(r)){guardar(r,null);n++;}else malos.push('no se puede borrar '+r);}
+  res.textContent=(n?'✓ '+n+' cargado'+(n===1?'':'s'):'')+(malos.length?' · ❌ '+malos.join(' · '):'');
+  if(n&&!malos.length)$('imp').value='';
+}
+function bajarCopia(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='fisico-copia-'+hoy()+'.json';a.click();}
+
+// ── SESIÓN ──
+function entrar(){
+  const m=$('l-mail').value.trim(),p=$('l-pass').value,err=$('l-err');err.textContent='';
+  if(!m||!p){err.textContent='Poné el mail y la contraseña.';return;}
+  firebase.auth().signInWithEmailAndPassword(m,p).catch(e=>{
+    const c=e&&e.code||'';
+    err.textContent=/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c)?'Mail o contraseña incorrectos.':/network/.test(c)?'No hay internet.':/too-many/.test(c)?'Muchos intentos: esperá un rato.':'No se pudo entrar ('+c+').';
+  });
+}
+function salir(){if(!confirm('¿Cerrar sesión?'))return;try{localStorage.removeItem(CACHE_KEY);}catch(_){}firebase.auth().signOut().then(()=>location.reload());}
+
+// ── VERSIÓN NUEVA: se recarga sola. Igual que CYC: mira sw.js cada 2 minutos y al volver a la app; si cambió el número,
+// recarga en cuanto no estés escribiendo. Si pasan 3 minutos y seguís escribiendo, tapa la pantalla con un botón para actualizar. ──
+function vigilarVersion(){
+  if(!('serviceWorker' in navigator))return;
+  navigator.serviceWorker.getRegistration().then(reg=>{
+    let nueva=false,desde=0,tapada=false;
+    const tapar=()=>{if(tapada)return;tapada=true;const d=document.createElement('div');
+      d.style.cssText='position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:16px';
+      d.innerHTML='<div class="card" style="max-width:340px;text-align:center"><div style="font-size:1.6rem">🔄</div><p>Hay una versión nueva de la app.</p><button class="pri" style="width:100%">Actualizar</button></div>';
+      d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);};
+    const recargar=()=>{if(!nueva||document.visibilityState!=='visible')return;
+      if(!editando()&&!leerCola().length){location.reload();return;}
+      if(Date.now()-desde>3*60*1000){tapar();return;}
+      setTimeout(recargar,2000);};
+    const marcar=()=>{if(!nueva)desde=Date.now();nueva=true;setTimeout(recargar,800);};
+    let base=null;
+    const mirar=()=>{if(document.visibilityState!=='visible')return;fetch('sw.js?v='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.text():null).then(t=>{
+      const m=t&&t.match(/const CACHE = "([^"]+)"/);if(!m)return;if(base==null){base=m[1];return;}if(m[1]!==base){reg&&reg.update().catch(()=>{});marcar();}}).catch(()=>{});};
+    mirar();setInterval(mirar,2*60*1000);document.addEventListener('visibilitychange',mirar);window.addEventListener('focus',mirar);
+    document.addEventListener('focusout',()=>setTimeout(recargar,300));
+    if(reg){
+      if(reg.waiting&&navigator.serviceWorker.controller)marcar();
+      reg.addEventListener('updatefound',()=>{const n=reg.installing;if(!n)return;n.addEventListener('statechange',()=>{if(n.state==='installed'&&navigator.serviceWorker.controller)marcar();});});
+      reg.update().catch(()=>{});
+    }
+  }).catch(()=>{});
+}
+
+// ── ARRANQUE ──
+window.addEventListener('load',()=>{
+  const h=location.hash.slice(1);if(h)pagina=h;
+  vigilarVersion();
+  const hayCache=leerCache();
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);db=firebase.database();
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+    firebase.auth().onAuthStateChanged(u=>{
+      usuario=u;
+      if(!u){$('login').style.display='flex';$('nav').style.display='none';return;}
+      $('login').style.display='none';$('nav').style.display='flex';
+      if(hayCache)pintar();
+      const vistas={};
+      RAMAS.forEach(k=>db.ref(RAIZ+'/'+k).on('value',s=>{S[k]=s.val()||{};vistas[k]=1;
+        // Lo que todavía está en la cola (sin subir) se vuelve a poner encima, para que no "desaparezca" mientras sube.
+        for(const it of leerCola())if(it.ruta.split('/')[0]===k)aplicarLocal(it.ruta,it.val);
+        if(Object.keys(vistas).length===RAMAS.length)guardarCache();pintarPronto();},
+        e=>{toast('Sin permiso para leer los datos ('+(e&&e.code||e)+')','err',6000);}));
+      db.ref('.info/connected').on('value',s=>{if(s.val())mandarCola();});
+      mandarCola();
+    });
+  }catch(e){$('app').innerHTML='<div class="card">No se pudo arrancar: '+esc(e.message)+'</div>';}
+});
+</script>
+</body>
+</html>

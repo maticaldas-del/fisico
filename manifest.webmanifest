@@ -1,0 +1,23 @@
+{
+  "name": "Físico",
+  "short_name": "Físico",
+  "description": "Entreno, dieta, peso, medidas y fotos.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0f0f11",
+  "theme_color": "#0f0f11",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Entreno", "short_name": "Entreno", "url": "./#entreno", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Dieta", "short_name": "Dieta", "url": "./#dieta", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] },
+    { "name": "Peso", "short_name": "Peso", "url": "./#peso", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
+  ]
+}
