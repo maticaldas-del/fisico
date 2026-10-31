@@ -72,6 +72,13 @@ nav#nav button.on{color:var(--accent)}
 svg.graf{width:100%;height:auto;display:block}
 details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36px;display:flex;align-items:center}
 .estado{font-size:.75rem;color:var(--muted);text-align:center;margin-top:6px}
+#descanso{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:60;display:none;align-items:center;gap:6px;padding:8px 12px;background:var(--surface2);border-top:1px solid var(--accent)}
+#descanso #d-txt{flex:1;white-space:nowrap;overflow:hidden;font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+#descanso button{padding:4px 10px;min-height:44px}
+#descanso.fin{background:var(--accent);color:var(--accent-dark)}
+#descanso.fin button{background:var(--accent-dark);color:var(--accent);border-color:var(--accent-dark)}
+body.con-desc{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
+body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 </style>
 </head>
 <body>
@@ -93,6 +100,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
   <button data-p="fotos" onclick="ir('fotos')"><span>📸</span>Fotos</button>
   <button data-p="ajustes" onclick="ir('ajustes')"><span>⚙️</span>Ajustes</button>
 </nav>
+<div id="descanso" role="timer" aria-live="polite">
+  <span id="d-txt"></span>
+  <button class="chico" id="d-menos" onclick="sumarDescanso(-30)">−30 s</button>
+  <button class="chico" id="d-mas" onclick="sumarDescanso(30)">+30 s</button>
+  <button class="chico" onclick="cortarDescanso()">Listo</button>
+</div>
 <div id="toast"></div>
 <div id="visor">
   <div class="row sp" style="padding:10px 12px"><span id="v-txt" class="mu"></span><button class="x" style="font-size:1.6rem;color:#fff" onclick="cerrarVisor()" aria-label="Cerrar">✕</button></div>
@@ -107,8 +120,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.00';
+const APP_VERSION='1.01';
 const APP_CAMBIOS=[
+  {v:'1.01',f:'31/10',h:'20:40',c:[{n:2,t:'Descanso entre series: al anotar una serie arranca solo un reloj de 3 minutos (con −30 s, +30 s y Listo). Al terminar suena, vibra y la pantalla no se apaga mientras descansás.'}]},
   {v:'1.00',f:'31/10',h:'17:30',c:[{n:3,t:'Primera versión: inicio, peso y medidas, entreno con "la última vez", dieta con comidas frecuentes, fotos y ajustes.'}]},
 ];
 const CAMBIO_NIVEL={1:{txt:'leve',col:'#22c55e'},2:{txt:'mediano',col:'#eab308'},3:{txt:'importante',col:'#ef4444'}};
@@ -370,6 +384,7 @@ function agregarSerie(i){
   ej.series.push({r,kg:kg||0});
   document.activeElement&&document.activeElement.blur();
   guardarEnc(enc);
+  empezarDescanso(descSeg());
   // Aviso de récord: más peso que lo mejor de la última vez, o el mismo peso con más repeticiones (y que no se haya avisado hoy).
   const k=kg||0,supera=b=>b&&(k>b.kg||(k===b.kg&&r>b.r));
   if(antes&&supera(antes)&&!(yaHoy&&(yaHoy.kg>antes.kg||(yaHoy.kg===antes.kg&&yaHoy.r>antes.r))))toast('🔥 ¡Superaste la última vez! ('+txtSeries([antes])+')','ok',4000);
@@ -380,7 +395,47 @@ function agregarEjercicio(){const enc=entrenoEnCurso();const n=$('e-nuevo').valu
 function terminarEntreno(){const enc=entrenoEnCurso();if(!enc)return;
   const hechas=(enc.ej||[]).reduce((s,e)=>s+(e.series||[]).length,0);
   if(!hechas&&!confirm('No anotaste ninguna serie. ¿Terminar igual?'))return;
-  enc.estado='hecho';enc.fin=Date.now();guardarEnc(enc);toast('💪 Entreno guardado');}
+  enc.estado='hecho';enc.fin=Date.now();guardarEnc(enc);cortarDescanso();toast('💪 Entreno guardado');}
+
+// ── DESCANSO ENTRE SERIES: al anotar una serie arranca un reloj (3 minutos, o config.descanso en segundos).
+// Se guarda la hora de fin en el teléfono, así sigue aunque la app se recargue. Al terminar: pitido, vibración y,
+// si la app está de fondo y él dio permiso, una notificación. Mientras corre, la pantalla no se apaga. ──
+const DESC_KEY='fisico_descanso_v1';
+let _descFin=0,_descInt=null,_audio=null,_wake=null,_sonado=false;
+const descSeg=()=>meta('descanso')||180;
+const mmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+// El sonido sólo se habilita después de un toque en la pantalla (regla de los navegadores).
+function prepararAudio(){try{if(!_audio){const C=window.AudioContext||window.webkitAudioContext;if(C)_audio=new C();}if(_audio&&_audio.state==='suspended')_audio.resume();}catch(_){}}
+document.addEventListener('pointerdown',prepararAudio);
+function pitar(){if(!_audio)return;try{const t0=_audio.currentTime+0.05;for(let i=0;i<3;i++){const o=_audio.createOscillator(),g=_audio.createGain(),t=t0+i*0.35;
+  o.type='square';o.frequency.value=880;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.35,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+  o.connect(g);g.connect(_audio.destination);o.start(t);o.stop(t+0.27);}}catch(_){}}
+function pedirPantalla(){try{if(navigator.wakeLock&&!_wake&&document.visibilityState==='visible')navigator.wakeLock.request('screen').then(w=>{_wake=w;w.addEventListener('release',()=>{_wake=null;});}).catch(()=>{});}catch(_){}}
+function soltarPantalla(){try{_wake&&_wake.release();}catch(_){}_wake=null;}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(_descFin){pedirPantalla();tickDescanso();}}});
+function avisarFondo(){try{if(document.visibilityState==='visible'||!('Notification' in window)||Notification.permission!=='granted')return;
+  navigator.serviceWorker&&navigator.serviceWorker.getRegistration().then(r=>r&&r.showNotification('💪 ¡A la próxima serie!',{body:'Terminó el descanso.',tag:'descanso',renotify:true,vibrate:[400,150,400],icon:'icon.svg'})).catch(()=>{});}catch(_){}}
+function guardarDesc(){try{_descFin?localStorage.setItem(DESC_KEY,String(_descFin)):localStorage.removeItem(DESC_KEY);}catch(_){}}
+function correrDescanso(){clearInterval(_descInt);_descInt=setInterval(tickDescanso,250);tickDescanso();}
+function empezarDescanso(seg){
+  prepararAudio();_sonado=false;_descFin=Date.now()+seg*1000;guardarDesc();pedirPantalla();correrDescanso();
+  try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().catch(()=>{});}catch(_){}
+}
+function sumarDescanso(s){if(!_descFin)return;const base=_sonado?Date.now():_descFin;_sonado=false;_descFin=Math.max(Date.now()+1000,base+s*1000);guardarDesc();pedirPantalla();tickDescanso();}
+function cortarDescanso(){_descFin=0;_sonado=false;clearInterval(_descInt);_descInt=null;guardarDesc();soltarPantalla();tickDescanso();}
+function tickDescanso(){
+  const el=$('descanso');if(!el)return;
+  if(!_descFin){el.style.display='none';document.body.classList.remove('con-desc');return;}
+  el.style.display='flex';document.body.classList.add('con-desc');
+  const falta=Math.ceil((_descFin-Date.now())/1000);
+  if(falta>0){el.className='';$('d-txt').textContent='⏱️ '+mmss(falta);$('d-menos').style.display='';return;}
+  el.className='fin';$("d-txt").textContent="💪 ¡Otra serie!";$('d-menos').style.display='none';
+  if(!_sonado){_sonado=true;soltarPantalla();
+    if(falta>-5){pitar();setTimeout(pitar,1300);try{navigator.vibrate&&navigator.vibrate([400,150,400,150,400]);}catch(_){}avisarFondo();}}
+  if(falta<-60)cortarDescanso();
+}
+// Si la app se recargó en medio de un descanso, sigue donde estaba.
+(function(){try{const f=Number(localStorage.getItem(DESC_KEY)||0);if(f&&f>Date.now()-60000){_descFin=f;_sonado=f<=Date.now();window.addEventListener('load',correrDescanso);}}catch(_){}})();
 
 // ── DIETA ──
 function frecuentes(){
@@ -531,6 +586,8 @@ function vigilarVersion(){
       d.innerHTML='<div class="card" style="max-width:340px;text-align:center"><div style="font-size:1.6rem">🔄</div><p>Hay una versión nueva de la app.</p><button class="pri" style="width:100%">Actualizar</button></div>';
       d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);};
     const recargar=()=>{if(!nueva||document.visibilityState!=='visible')return;
+      // Durante un descanso no se recarga (se cortaría el sonido); se espera sin contar esos minutos.
+      if(_descFin){desde=Date.now();setTimeout(recargar,5000);return;}
       if(!editando()&&!leerCola().length){location.reload();return;}
       if(Date.now()-desde>3*60*1000){tapar();return;}
       setTimeout(recargar,2000);};
