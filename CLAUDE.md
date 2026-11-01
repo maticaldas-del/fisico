@@ -35,7 +35,8 @@ Subir cada cambio a `main` con un mensaje claro.
   - `peso/{id}`: `{f:'AAAA-MM-DD', kg, cintura, pecho, brazo, pierna, grasa, t}` (todo menos `f` es opcional; medidas en cm, grasa en %).
   - `entrenos/{id}`: `{f, rutina: id de la rutina, rutinaN: nombre, estado:'en curso'|'hecho', ej:[{n:'Press banca', plan:'4×8', series:[{r:8, kg:60}]}], t}`.
   - `rutinas/{id}`: `{n:'Pecho y tríceps', orden:1, ejercicios:[{n, series, reps, kg}]}`. La rutina que "toca" es la que sigue (por `orden`) a la última hecha.
-  - `comidas/{id}`: `{f, n:'Pollo con arroz', kcal, p, c, g, t}`. Las "comidas frecuentes" salen solas de lo cargado (no se guardan aparte).
+  - `comidas/{id}`: `{f, m:'desayuno'|'almuerzo'|'merienda'|'cena'|'colacion', n:'Pollo con arroz', kcal, p, c, g, t}`.
+    `m` es en qué comida del día va (la pantalla Dieta las agrupa así); el nombre va sin "Desayuno:" adelante. Las "comidas frecuentes" salen solas de lo cargado (no se guardan aparte).
   - `config`: `{kcal, p, c, g, pesoMeta}` (metas por día).
   - `fotos/{id}`: `{f, mini: foto chiquita en texto (data:image/jpeg), nota, t}` y `fotosFull/{id}`: la foto grande (se baja sólo al abrirla).
     Las fotos van a la base, NUNCA al repositorio (es público).
@@ -46,7 +47,7 @@ Subir cada cambio a `main` con un mensaje claro.
 Matías quiere que Claude cargue todo (31/10/2026: "quiero que tengas acceso total. porque vos vas a cargar todos los datos").
 Se hace desde su Chrome, con la app abierta y su sesión iniciada: Ajustes → "📥 Cargar datos (lo usa Claude)" → pegar un bloque así → Cargar:
 ```
-{"comidas":[{"f":"2026-10-31","n":"Avena con banana","kcal":420,"p":14,"c":70,"g":9}],
+{"comidas":[{"f":"2026-10-31","m":"desayuno","n":"Avena con banana","kcal":420,"p":14,"c":70,"g":9}],
  "peso":[{"f":"2026-10-31","kg":82.4,"cintura":88}],
  "entrenos":[{"f":"2026-10-31","rutinaN":"Pecho","estado":"hecho","ej":[{"n":"Press banca","series":[{"r":8,"kg":60}]}]}],
  "rutinas":[{"n":"Pecho y tríceps","orden":1,"ejercicios":[{"n":"Press banca","series":4,"reps":8,"kg":60}]}],
@@ -73,7 +74,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 ## Reglas de Matías (una por renglón, con fecha; si una cambia, se reemplaza el renglón)
 - 31/10/2026: las rutinas van cambiando: se arman por el chat, no hay una fija por día.
 - 31/10/2026: se guarda TODO (ejercicios, pesos, series, comidas, medidas, fotos) y se tiene que poder ver después.
-- 31/10/2026: la pantalla de inicio muestra calorías y proteína del día contra la meta.
+- 01/11/2026: la Dieta se parece a la app que usaba antes (MyFitnessPal): semana con círculos, racha, calorías que restan, carbos/grasas/proteínas lado a lado y comidas por Desayuno/Almuerzo/Merienda/Cena/Colaciones. El inicio muestra lo mismo.
 - 01/11/2026: las metas (calorías, proteína, carbohidratos, grasas) las pone Claude con criterio; él corrige si quiere. Objetivo: hipertrofia y definición, 1700 kcal, bajar 0,5-0,7 kg por semana.
 - 31/10/2026: peso en kilos con un decimal.
 - 31/10/2026: al anotar una serie, la app avisa si superó la última vez (más peso, o el mismo peso con más repeticiones).
