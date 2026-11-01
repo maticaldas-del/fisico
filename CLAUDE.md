@@ -24,7 +24,9 @@ La app mira `sw.js` cada 2 minutos y al volver a la pantalla: si cambió, se rec
 la pantalla con un botón "Actualizar"). Normalmente NO hace falta decirle "actualizá la app".
 
 ## Antes de decir que algo anda
-Abrirla en el navegador, mirarla en 360 px y en 1200 px, revisar que no haya errores en la consola. Si escribe en la base, releer lo escrito.
+Abrirla en el navegador, mirarla en 360 px y en 1200 px, revisar que no haya errores en la consola.
+NUNCA subir sin antes comprobar que el JavaScript no tiene errores de escritura (01/11/2026 quedó en "Cargando…" por eso).
+Si igual pasa: a los 8 s la app muestra un botón "Recargar la app" que borra lo guardado y la baja de nuevo. Si escribe en la base, releer lo escrito.
 Subir cada cambio a `main` con un mensaje claro.
 
 ## La base de datos (Firebase)
