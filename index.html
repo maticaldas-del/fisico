@@ -169,8 +169,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.10';
+const APP_VERSION='1.11';
 const APP_CAMBIOS=[
+  {v:'1.11',f:'01/11',h:'01:40',c:[{n:1,t:'La app siempre arranca en el día de hoy: al abrirla, al volver después de 5 minutos y cuando cambia el día (a las 4 de la mañana).'}]},
   {v:'1.10',f:'01/11',h:'01:10',c:[{n:2,t:'Más nutrientes: cloro y flúor (el flúor también cuenta el agua que tomás), omega 3 vegetal y omega 6, y como límites para no pasarse: grasas trans, colesterol y cafeína.'}]},
   {v:'1.09',f:'01/11',h:'00:50',c:[{n:2,t:'En el inicio podés elegir el día: con la semana de arriba (los círculos), con las flechas, o tocando la fecha para abrir el calendario. Muestra el peso, el entreno, la comida, las vitaminas y el agua de ese día. El día elegido es el mismo en Inicio y en Dieta.'}]},
   {v:'1.08',f:'01/11',h:'00:35',c:[{n:2,t:'Si la app se queda en "Cargando…", a los 8 segundos aparece un botón para recargarla de cero. Y el teléfono ya no se queda con una versión vieja guardada.'}]},
@@ -202,6 +203,13 @@ const CACHE_KEY='fisico_cache_v1',COLA_KEY='fisico_cola_v1';
 
 let db=null,usuario=null,pagina='inicio';
 let S={peso:{},entrenos:{},rutinas:{},comidas:{},config:{},fotos:{}};
+// Al abrir la app, al volver a ella después de 5 minutos o cuando cambia el día (4 de la mañana), siempre vuelve a HOY.
+let _ocultaDesde=0,_hoyVisto=null;
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden'){_ocultaDesde=Date.now();return;}
+  if(diaDieta&&_ocultaDesde&&Date.now()-_ocultaDesde>5*60e3){diaDieta=null;agregarEn='';pintarPronto();}
+});
+setInterval(()=>{const h=hoy();if(_hoyVisto&&h!==_hoyVisto){diaDieta=null;pintarPronto();}_hoyVisto=h;},60e3);
 let diaDieta=null,rangoPeso=60,ejGraf='';
 
 // ── AYUDAS ──
