@@ -36,6 +36,11 @@ Subir cada cambio a `main` con un mensaje claro.
   - `entrenos/{id}`: `{f, rutina: id de la rutina, rutinaN: nombre, estado:'en curso'|'hecho', ej:[{n:'Press banca', plan:'4×8', series:[{r:8, kg:60}]}], t}`.
   - `rutinas/{id}`: `{n:'Pecho y tríceps', orden:1, ejercicios:[{n, series, reps, kg}]}`. La rutina que "toca" es la que sigue (por `orden`) a la última hecha.
   - `comidas/{id}`: `{f, m:'desayuno'|'almuerzo'|'merienda'|'cena'|'colacion', n:'Pollo con arroz', kcal, p, c, g, t}`.
+    `mi`: vitaminas, minerales y demás de ESA comida, estimados por Claude. SIEMPRE se cargan con cada comida (la Dieta los suma
+    y los tacha cuando llega a lo del día). Claves y unidades: vA µg, vC mg, vD µg, vE mg, vK µg, b1 mg, b2 mg, b3 mg, b5 mg, b6 mg,
+    b7 µg, b9 µg, b12 µg, col (colina) mg, ca mg, fe mg, mg (magnesio) mg, fos (fósforo) mg, k (potasio) mg, zn mg, cu mg, mn mg,
+    se µg, i (yodo) µg, cr µg, mo µg, fib (fibra) g, o3 (omega 3 EPA+DHA) mg, na (sodio) mg, az (azúcar agregada) g, sat (grasa saturada) g.
+    Las metas por día están en `NUTRI` en index.html.
     `m` es en qué comida del día va (la pantalla Dieta las agrupa así); el nombre va sin "Desayuno:" adelante. Las "comidas frecuentes" salen solas de lo cargado (no se guardan aparte).
   - `agua/{AAAA-MM-DD}`: mililitros tomados ese día (un número). En la carga: `"agua":{"2026-10-31":1500}` pone el total del día.
   - `config`: `{kcal, p, c, g, agua (ml, si no 3000), pesoMeta, descanso (segundos, si no 180)}` (metas por día).
