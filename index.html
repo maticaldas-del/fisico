@@ -169,8 +169,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.12';
+const APP_VERSION='1.13';
 const APP_CAMBIOS=[
+  {v:'1.13',f:'01/11',h:'11:10',c:[{n:1,t:'El botón + Vaso del agua suma 300 ml (contando para abajo), y el − saca lo mismo.'}]},
   {v:'1.12',f:'01/11',h:'01:50',c:[{n:2,t:'La app usa siempre la hora de Argentina y el día cambia a la medianoche, como el reloj. La cena que comés entre las 0 y las 4 h se guarda sola en el día anterior.'}]},
   {v:'1.11',f:'01/11',h:'01:40',c:[{n:1,t:'La app siempre arranca en el día de hoy: al abrirla, al volver después de 5 minutos y cuando cambia el día (a las 4 de la mañana).'}]},
   {v:'1.10',f:'01/11',h:'01:10',c:[{n:2,t:'Más nutrientes: cloro y flúor (el flúor también cuenta el agua que tomás), omega 3 vegetal y omega 6, y como límites para no pasarse: grasas trans, colesterol y cafeína.'}]},
@@ -606,9 +607,9 @@ function htmlAgua(f){
       <div class="txt">${litros(ml)} L<small>de ${litros(m)} L</small></div>
     </div>
     <div class="row" style="margin-top:10px;flex-wrap:nowrap">
-      <button style="flex:1" onclick="sumarAgua('${f}',350)">+ Vaso<br><span class="mu">350 ml</span></button>
+      <button style="flex:1" onclick="sumarAgua('${f}',300)">+ Vaso<br><span class="mu">300 ml</span></button>
       <button style="flex:1" onclick="sumarAgua('${f}',500)">+ Botella<br><span class="mu">500 ml</span></button>
-      <button style="min-width:56px;font-size:1.4rem" onclick="sumarAgua('${f}',-350)" aria-label="Sacar 350 ml">−</button>
+      <button style="min-width:56px;font-size:1.4rem" onclick="sumarAgua('${f}',-300)" aria-label="Sacar 300 ml">−</button>
     </div></div>`;
 }
 function sumarAgua(f,ml){
