@@ -85,6 +85,9 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 - 31/10/2026: peso en kilos con un decimal.
 - 31/10/2026: al anotar una serie, la app avisa si superó la última vez (más peso, o el mismo peso con más repeticiones).
 - 31/10/2026: lo que come lo pasa por el chat y lo carga Claude.
+- 01/11/2026: come 4 veces, a las 11 (desayuno), 16 (almuerzo), 20 (merienda) y 24 h (cena). No más, no menos. La cena de las 24 h
+  es del día que termina (en la app el día cambia a las 4 de la mañana; al cargar, usar esa misma fecha).
+- 01/11/2026: no le gustan: banana con el café (con el café quiere algo para masticar: barra o galletitas), aceite de oliva, atún al natural.
 - 01/11/2026: café, té, mate y demás bebidas sin alcohol cuentan como agua: al cargarlos, Claude suma su volumen al agua del día. Medidas de Matías: un café = 350 ml, un té = 350 ml, un vaso = 350 ml.
 - 31/10/2026: la app la usa SÓLO él. Nadie puede crearse una cuenta solo (Firebase → Authentication → Configuración → Acciones del
   usuario: "Habilitar la creación" y "Habilitar la eliminación" apagados). Un usuario nuevo se agrega sólo desde la consola de Firebase

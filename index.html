@@ -156,8 +156,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.05';
+const APP_VERSION='1.06';
 const APP_CAMBIOS=[
+  {v:'1.06',f:'01/11',h:'00:35',c:[{n:2,t:'El día termina a las 4 de la mañana: lo que comés o tomás a las 24 h queda en el día que termina, no en el siguiente. Las comidas se ubican solas según tus horarios (11, 16, 20 y 24 h).'}]},
   {v:'1.05',f:'01/11',h:'00:20',c:[{n:1,t:'El botón + Vaso del agua ahora suma 350 ml (tu vaso), y el − saca lo mismo.'}]},
   {v:'1.04',f:'01/11',h:'00:10',c:[{n:3,t:'Vitaminas y minerales en la Dieta: las 14 vitaminas, 12 minerales, fibra y omega 3, cada una con su barra contra lo que necesitás por día; se tachan con ✓ cuando llegás. Abajo, sodio, azúcar y grasa saturada como límites para no pasarse. En el inicio, cuántas llevás completas.'}]},
   {v:'1.03',f:'01/11',h:'00:05',c:[{n:2,t:'Agua en el inicio y en la Dieta: un tanque que se va llenando (con olas y burbujas) contra la meta de 3 litros, con botones + Vaso (250 ml), + Botella (500 ml) y − para corregir.'}]},
@@ -193,7 +194,8 @@ const num=v=>{if(v===''||v==null)return null;const n=parseFloat(String(v).replac
 const fmt=(n,d=0)=>n==null||!isFinite(n)?'–':Number(n).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtKg=n=>n==null?'–':(Math.round(n*10)/10).toLocaleString('es-AR',{maximumFractionDigits:1});
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-const hoy=()=>ymd(new Date());
+// Matías come a las 11, 16, 20 y 24 h: el día termina a las 4 de la mañana (la cena de las 24 es del día que termina).
+const hoy=()=>ymd(new Date(Date.now()-4*3600e3));
 function sumarDias(f,n){const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return ymd(d);}
 const DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 function fechaLinda(f){if(!f)return '';const d=new Date(f+'T12:00:00');return DIAS[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1);}
@@ -484,10 +486,12 @@ const PREF_RE=/^\s*(desayuno|almuerzo|merienda|cena|colaci[oó]n(?:es)?)\s*:\s*/
 function momentoDe(c){
   if(c.m&&MOMENTOS.some(x=>x[0]===c.m))return c.m;
   const pm=String(c.n||'').match(PREF_RE);if(pm){const k=pm[1].toLowerCase();return k.startsWith('colaci')?'colacion':k;}
-  const h=c.t?new Date(c.t).getHours():12;return h<11?'desayuno':h<16?'almuerzo':h<20?'merienda':'cena';
+  const h=c.t?new Date(c.t).getHours():12;return momentoDeHora(h);
 }
 const nombreComida=c=>String(c.n||'').replace(PREF_RE,'');
-const momentoAhora=()=>{const h=new Date().getHours();return h<11?'desayuno':h<16?'almuerzo':h<20?'merienda':'cena';};
+// Sus horarios: desayuno 11, almuerzo 16, merienda 20, cena 24.
+const momentoDeHora=h=>h>=4&&h<14?'desayuno':h>=14&&h<18?'almuerzo':h>=18&&h<22?'merienda':'cena';
+const momentoAhora=()=>momentoDeHora(new Date().getHours());
 let agregarEn='';
 // Anillo de un día: cuánto de la meta de calorías se comió (verde hasta la meta, ámbar si se pasó más de 10%).
 function anillo(f,sel){
