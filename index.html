@@ -170,8 +170,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.14';
+const APP_VERSION='1.15';
 const APP_CAMBIOS=[
+  {v:'1.15',f:'01/11',h:'16:25',c:[{n:1,t:'Saqué el entreno del inicio: está en su pantalla, Entreno.'}]},
   {v:'1.14',f:'01/11',h:'16:15',c:[{n:2,t:'Arreglado: al abrir una foto no se podía salir en el iPhone (la cruz quedaba tapada por la hora). Ahora hay un botón verde "Cerrar" arriba y otro abajo, y también sale con el gesto de volver.'}]},
   {v:'1.13',f:'01/11',h:'11:10',c:[{n:1,t:'El botón + Vaso del agua suma 300 ml (contando para abajo), y el − saca lo mismo.'}]},
   {v:'1.12',f:'01/11',h:'01:50',c:[{n:2,t:'La app usa siempre la hora de Argentina y el día cambia a la medianoche, como el reloj. La cena que comés entre las 0 y las 4 h se guarda sola en el día anterior.'}]},
@@ -348,20 +349,12 @@ function pInicio(){
   const ps=pesosOrd().filter(p=>p.f<=f),u=ps[ps.length-1],ant=ps[ps.length-2];
   const dif=u&&ant?u.kg-ant.kg:null;
   const cs=comidasDe(f),t=totales(cs);
-  const enc=entrenoEnCurso(),prox=proximaRutina();
-  const ultEnt=entrenosOrd().find(e=>e.estado!=='en curso');
-  let entTxt;
-  if(!esHoy){const es=entrenosOrd().filter(e=>e.f===f);
-    entTxt=es.length?es.map(e=>`<div style="font-weight:600">${esc(e.rutinaN||'Entreno')}${e.estado==='en curso'?' · en curso':' · hecho'}</div><div class="mu">${(e.ej||[]).filter(x=>(x.series||[]).length).map(x=>esc(x.n)+' '+txtSeries(x.series)).join(' — ')||'Sin series anotadas'}</div>`).join(''):`<div class="mu">${f>hoy()?'Este día todavía no llegó.':'No entrenaste este día.'}</div>`;}
-  else if(enc)entTxt=`<div style="font-weight:600">${esc(enc.rutinaN||'Entreno')} · en curso</div><button class="pri" style="margin-top:8px" onclick="ir('entreno')">Seguir ›</button>`;
-  else if(prox)entTxt=`<div style="font-weight:600">Te toca: ${esc(prox.n)}</div><div class="mu">${(prox.ejercicios||[]).length} ejercicios${ultEnt?' · último entreno '+fechaLinda(ultEnt.f):''}</div><button class="pri" style="margin-top:8px" onclick="empezarEntreno('${prox.id}')">Empezar</button>`;
-  else entTxt=`<div class="mu">Todavía no hay rutinas: las armamos por el chat.</div>`;
+  // 01/11: el entreno no va en el inicio (está en su pantalla).
   const r=resumenMi(f);
   return `${htmlSemana(f)}
   <div class="card" onclick="ir('peso')" style="cursor:pointer"><div class="mu">Peso${u&&u.f!==f?' (último, '+fechaLinda(u.f)+')':esHoy?' de hoy':' de ese día'}</div>
     <div class="big">${u?fmtKg(u.kg)+' kg':'–'} ${dif!=null?`<span style="font-size:.95rem;color:${dif<=0?'var(--accent)':'var(--amber)'}">${dif<=0?'▼':'▲'} ${fmtKg(Math.abs(dif))}</span>`:''}</div>
     ${meta('pesoMeta')&&u?`<div class="mu">Meta ${fmtKg(meta('pesoMeta'))} kg · faltan ${fmtKg(Math.abs(u.kg-meta('pesoMeta')))} kg</div>`:''}</div>
-  <div class="card"><div class="mu">Entreno</div>${entTxt}</div>
   ${htmlCalMacros(t,true,totales(cs.concat(fantasmas(f))))}
   <div class="card row sp" onclick="ir('dieta')" style="cursor:pointer;flex-wrap:nowrap"><span>🧪 Vitaminas y minerales</span><b>${r.ok} de ${r.tot} ✓</b></div>
   ${htmlAgua(f)}
