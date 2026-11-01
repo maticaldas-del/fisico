@@ -169,8 +169,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.11';
+const APP_VERSION='1.12';
 const APP_CAMBIOS=[
+  {v:'1.12',f:'01/11',h:'01:50',c:[{n:2,t:'La app usa siempre la hora de Argentina y el día cambia a la medianoche, como el reloj. La cena que comés entre las 0 y las 4 h se guarda sola en el día anterior.'}]},
   {v:'1.11',f:'01/11',h:'01:40',c:[{n:1,t:'La app siempre arranca en el día de hoy: al abrirla, al volver después de 5 minutos y cuando cambia el día (a las 4 de la mañana).'}]},
   {v:'1.10',f:'01/11',h:'01:10',c:[{n:2,t:'Más nutrientes: cloro y flúor (el flúor también cuenta el agua que tomás), omega 3 vegetal y omega 6, y como límites para no pasarse: grasas trans, colesterol y cafeína.'}]},
   {v:'1.09',f:'01/11',h:'00:50',c:[{n:2,t:'En el inicio podés elegir el día: con la semana de arriba (los círculos), con las flechas, o tocando la fecha para abrir el calendario. Muestra el peso, el entreno, la comida, las vitaminas y el agua de ese día. El día elegido es el mismo en Inicio y en Dieta.'}]},
@@ -219,8 +220,13 @@ const num=v=>{if(v===''||v==null)return null;const n=parseFloat(String(v).replac
 const fmt=(n,d=0)=>n==null||!isFinite(n)?'–':Number(n).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtKg=n=>n==null?'–':(Math.round(n*10)/10).toLocaleString('es-AR',{maximumFractionDigits:1});
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-// Matías come a las 11, 16, 20 y 24 h: el día termina a las 4 de la mañana (la cena de las 24 es del día que termina).
-const hoy=()=>ymd(new Date(Date.now()-4*3600e3));
+// SIEMPRE hora de Argentina (UTC−3, sin horario de verano), aunque el teléfono o la PC tengan otra zona.
+// El día cambia a la medianoche. La cena (24 h) comida entre las 0 y las 4 se guarda en el día anterior (ver diaParaComida).
+const AR=ms=>new Date((ms==null?Date.now():ms)-3*3600e3); // usar sólo con getUTC…
+const ymdAR=ms=>{const d=AR(ms);return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');};
+const horaAR=ms=>AR(ms).getUTCHours();
+const hoy=()=>ymdAR();
+function diaParaComida(f,m){return f===hoy()&&m==='cena'&&horaAR()<4?sumarDias(f,-1):f;}
 function sumarDias(f,n){const d=new Date(f+'T12:00:00');d.setDate(d.getDate()+n);return ymd(d);}
 const DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 function fechaLinda(f){if(!f)return '';const d=new Date(f+'T12:00:00');return DIAS[d.getDay()]+' '+d.getDate()+'/'+(d.getMonth()+1);}
@@ -520,12 +526,12 @@ const PREF_RE=/^\s*(desayuno|almuerzo|merienda|cena|colaci[oó]n(?:es)?)\s*:\s*/
 function momentoDe(c){
   if(c.m&&MOMENTOS.some(x=>x[0]===c.m))return c.m;
   const pm=String(c.n||'').match(PREF_RE);if(pm){const k=pm[1].toLowerCase();return k.startsWith('colaci')?'colacion':k;}
-  const h=c.t?new Date(c.t).getHours():12;return momentoDeHora(h);
+  const h=c.t?horaAR(c.t):12;return momentoDeHora(h);
 }
 const nombreComida=c=>String(c.n||'').replace(PREF_RE,'');
 // Sus horarios: desayuno 11, almuerzo 16, merienda 20, cena 24.
 const momentoDeHora=h=>h>=4&&h<14?'desayuno':h>=14&&h<18?'almuerzo':h>=18&&h<22?'merienda':'cena';
-const momentoAhora=()=>momentoDeHora(new Date().getHours());
+const momentoAhora=()=>momentoDeHora(horaAR());
 let agregarEn='';
 // Anillo de un día: cuánto de la meta de calorías se comió (verde hasta la meta, ámbar si se pasó más de 10%).
 function anillo(f,sel){
@@ -549,7 +555,7 @@ function fantasmas(f){if(!planActivo(f))return [];const reales=new Set(comidasDe
 function comerPlan(f,idx){
   const xs=planItems().filter(x=>idx==null?true:(typeof idx==='string'?x.m===idx:x.i===idx));
   let t=Date.now();
-  for(const x of xs){const o={f,t:t++,m:x.m,n:x.n};for(const k of ['kcal','p','c','g'])if(x[k]!=null)o[k]=x[k];if(x.mi)o.mi=x.mi;guardar('comidas/'+nuevoId(),o);}
+  for(const x of xs){const o={f:diaParaComida(f,x.m),t:t++,m:x.m,n:x.n};for(const k of ['kcal','p','c','g'])if(x[k]!=null)o[k]=x[k];if(x.mi)o.mi=x.mi;guardar('comidas/'+nuevoId(),o);}
   toast(xs.length===1?'✓ '+xs[0].n:'✓ Cargado como en el plan');
 }
 
@@ -663,12 +669,13 @@ function pDieta(){
 }
 function agregarComida(m){
   const n=$('c-n').value.trim();if(!n){toast('Poné qué comiste','err');return;}
-  const o={f:diaDieta||hoy(),t:Date.now(),n,m:m||momentoAhora()};
+  const mm=m||momentoAhora(),o={f:diaParaComida(diaDieta||hoy(),mm),t:Date.now(),n,m:mm};
+  if(o.f!==(diaDieta||hoy()))toast('Cena guardada en el día anterior ('+fechaLinda(o.f)+')','ok',3500);
   for(const k of ['kcal','p','c','g']){const v=num($('c-'+k).value);if(v!=null)o[k]=v;}
   document.activeElement&&document.activeElement.blur();
   agregarEn='';guardar('comidas/'+nuevoId(),o);toast('Guardado');
 }
-function repetirComida(id,m){const c=S.comidas[id];if(!c)return;const o={f:diaDieta||hoy(),t:Date.now(),n:nombreComida(c),m:m||momentoDe(c)};for(const k of ['kcal','p','c','g'])if(c[k]!=null)o[k]=c[k];agregarEn='';guardar('comidas/'+nuevoId(),o);toast('Agregado: '+o.n);}
+function repetirComida(id,m){const c=S.comidas[id];if(!c)return;const mm=m||momentoDe(c),o={f:diaParaComida(diaDieta||hoy(),mm),t:Date.now(),n:nombreComida(c),m:mm};for(const k of ['kcal','p','c','g'])if(c[k]!=null)o[k]=c[k];agregarEn='';guardar('comidas/'+nuevoId(),o);toast('Agregado: '+o.n);}
 
 // ── FOTOS ── Se guardan en la base (no en el repositorio): una chiquita para la lista y una grande que se baja al abrirla.
 let fotosVis=[],visorI=0;const fullCache={};
