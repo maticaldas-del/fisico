@@ -1,6 +1,6 @@
 // Service worker de Físico: guarda la app (mismo origen) para que abra como app instalada y sin internet.
 // Cada vez que se toca index.html se sube este número: así el teléfono baja la versión nueva sola.
-const CACHE = "fisico-v9";
+const CACHE = "fisico-v10";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -23,8 +23,10 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
+  // cache "no-cache": pregunta siempre al servidor si hay versión nueva (GitHub deja guardada la página 10 minutos;
+  // así una versión rota nunca queda pegada en el teléfono).
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request.url, { cache: "no-cache", credentials: "same-origin" })
       .then((resp) => {
         const copia = resp.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copia));
