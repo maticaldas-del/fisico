@@ -4,11 +4,12 @@
 Necesita la llave de la base: un secreto de la nube para el sitio de la base (lo agrega solo) o la variable FIREBASE_SECRET (en el entorno de la nube,
 NUNCA en el repositorio). Los datos que se cargan tampoco van al repositorio: se escriben en /tmp.
 
-  python3 tools/fisico.py leer comidas --desde 2026-10-01     # también: peso, entrenos, rutinas, config, fotos
+  python3 tools/fisico.py leer comidas --desde 2026-10-01     # también: peso, entrenos, rutinas, config, fotos, agua
   python3 tools/fisico.py cargar /tmp/carga.json              # mismo formato que Ajustes → Cargar datos de la app
   python3 tools/fisico.py foto /tmp/foto.jpg --fecha 2026-10-31 --nota "de frente"   # necesita Pillow
 
-Formato de carga: {"peso":[...],"comidas":[...],"entrenos":[...],"rutinas":[...],"config":{...},"borrar":["comidas/ID"]}
+Formato de carga: {"peso":[...],"comidas":[...],"entrenos":[...],"rutinas":[...],"config":{...},"agua":{"2026-10-31":1500},"borrar":["comidas/ID"]}
+"agua" pone el TOTAL de mililitros de ese día (no suma).
 Con "id" pisa ese registro; sin "id" agrega uno nuevo. "config" se mezcla con lo que hay.
 """
 import base64, io, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
@@ -48,6 +49,8 @@ def leer(rama, desde=None):
         datos = pedir("GET", "fotos", extra={"shallow": "true"}) or {}
         return {k: "(foto)" for k in datos}
     datos = pedir("GET", rama) or {}
+    if desde and rama == "agua" and isinstance(datos, dict):
+        return {k: v for k, v in datos.items() if k >= desde}
     if desde and isinstance(datos, dict) and rama in RAMAS and rama != "rutinas":
         datos = {k: v for k, v in datos.items() if isinstance(v, dict) and str(v.get("f", "")) >= desde}
     return datos
@@ -69,6 +72,11 @@ def cargar(d):
                 o["t"] = int(time.time() * 1000) + n
             pedir("PUT", rama + "/" + i, o)
             n += 1
+    for f, ml in (d.get("agua") or {}).items():
+        if FECHA.match(str(f)) and isinstance(ml, (int, float)) and ml >= 0:
+            pedir("PUT", "agua/" + f, ml or None) if ml else pedir("DELETE", "agua/" + f); n += 1
+        else:
+            malos.append("agua: " + str(f))
     if isinstance(d.get("config"), dict):
         pedir("PATCH", "config", d["config"]); n += 1
     for r in d.get("borrar") or []:

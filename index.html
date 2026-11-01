@@ -86,6 +86,18 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .racha b{font-size:1rem}
 .momento .agr{color:var(--accent);border-color:#14532d;background:#0b2a17}
 .momento .lista{margin-top:4px}
+.tanque{position:relative;height:120px;border-radius:14px;overflow:hidden;background:#0b1622;border:1px solid #1e3a5f;margin-top:8px}
+.tanque .nivel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#38bdf8,#0369a1);transition:height 1s cubic-bezier(.3,1.4,.5,1)}
+.tanque .ola{position:absolute;left:0;right:0;top:-13px;height:14px;background-repeat:repeat-x;background-size:120px 14px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 14'%3E%3Cpath d='M0 7 Q15 0 30 7 T60 7 T90 7 T120 7 V14 H0Z' fill='%2338bdf8'/%3E%3C/svg%3E");animation:ola 3.2s linear infinite}
+.tanque .ola.b{opacity:.45;top:-11px;animation-duration:5s;animation-direction:reverse;background-size:160px 12px}
+@keyframes ola{from{background-position-x:0}to{background-position-x:120px}}
+.tanque .burbs{position:absolute;inset:0;overflow:hidden}
+.tanque .burb{position:absolute;bottom:4px;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.35);animation:burb 4s ease-in infinite}
+@keyframes burb{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-90px);opacity:0}}
+.tanque .txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:1.6rem;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+.tanque .txt small{font-size:.8rem;font-weight:600;opacity:.9}
+@media (prefers-reduced-motion:reduce){.tanque .ola,.tanque .burb{animation:none}}
 .estado{font-size:.75rem;color:var(--muted);text-align:center;margin-top:6px}
 #descanso{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:60;display:none;align-items:center;gap:6px;padding:8px 12px;background:var(--surface2);border-top:1px solid var(--accent)}
 #descanso #d-txt{flex:1;white-space:nowrap;overflow:hidden;font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums}
@@ -135,8 +147,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.02';
+const APP_VERSION='1.03';
 const APP_CAMBIOS=[
+  {v:'1.03',f:'01/11',h:'00:05',c:[{n:2,t:'Agua en el inicio y en la Dieta: un tanque que se va llenando (con olas y burbujas) contra la meta de 3 litros, con botones + Vaso (250 ml), + Botella (500 ml) y − para corregir.'}]},
   {v:'1.02',f:'31/10',h:'21:15',c:[{n:3,t:'Dieta nueva, como la app que usabas: la semana con un círculo por día que se llena con las calorías, racha 🔥 de días cargados, calorías con lo que resta, carbohidratos, grasas y proteínas lado a lado, y las comidas separadas en Desayuno, Almuerzo, Merienda, Cena y Colaciones, cada una con su botón para agregar. El inicio muestra lo mismo.'}]},
   {v:'1.01',f:'31/10',h:'20:40',c:[{n:2,t:'Descanso entre series: al anotar una serie arranca solo un reloj de 3 minutos (con −30 s, +30 s y Listo). Al terminar suena, vibra y la pantalla no se apaga mientras descansás.'}]},
   {v:'1.00',f:'31/10',h:'17:30',c:[{n:3,t:'Primera versión: inicio, peso y medidas, entreno con "la última vez", dieta con comidas frecuentes, fotos y ajustes.'}]},
@@ -155,7 +168,7 @@ const FIREBASE_CONFIG={
 };
 const RAIZ='fisico';
 // Lo que se escucha en vivo. Las fotos grandes (fotosFull) NO: se bajan de a una cuando se abren.
-const RAMAS=['peso','entrenos','rutinas','comidas','config','fotos'];
+const RAMAS=['peso','entrenos','rutinas','comidas','config','fotos','agua'];
 const CACHE_KEY='fisico_cache_v1',COLA_KEY='fisico_cola_v1';
 
 let db=null,usuario=null,pagina='inicio';
@@ -294,6 +307,7 @@ function pInicio(){
     ${meta('pesoMeta')&&u?`<div class="mu">Meta ${fmtKg(meta('pesoMeta'))} kg · faltan ${fmtKg(Math.abs(u.kg-meta('pesoMeta')))} kg</div>`:''}</div>
   <div class="card"><div class="mu">Entreno</div>${entTxt}</div>
   ${htmlCalMacros(t,true)}
+  ${htmlAgua(hoy())}
   ${htmlCambios()}`;
 }
 function htmlCambios(max=10){
@@ -476,6 +490,31 @@ function frecuentes(){
   for(const c of lista(S.comidas).filter(c=>c.f>=desde&&c.n)){const k=normN(nombreComida(c));if(!m[k])m[k]={cant:0,ult:c};m[k].cant++;if((c.t||0)>(m[k].ult.t||0))m[k].ult=c;}
   return Object.values(m).sort((a,b)=>b.cant-a.cant).slice(0,10).map(x=>x.ult);
 }
+// ── AGUA: agua/{AAAA-MM-DD} = mililitros tomados ese día. Meta en config.agua (ml), si no 3000. ──
+const aguaDe=f=>num((S.agua||{})[f])||0;
+const metaAgua=()=>meta('agua')||3000;
+const litros=ml=>(Math.round(ml/100)/10).toLocaleString('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});
+function htmlAgua(f){
+  const ml=aguaDe(f),m=metaAgua(),pct=Math.min(100,ml/m*100),falta=m-ml;
+  const nivel=ml?Math.min(90,Math.max(8,pct*0.9)):0; // tope 90% para que siempre se vean las olas
+  return `<div class="card"><div class="row sp"><span class="mu">💧 Agua${f===hoy()?' de hoy':' · '+fechaLinda(f)}</span><span class="mu">${falta>0?'faltan '+litros(falta)+' L':'¡meta cumplida! 🎉'}</span></div>
+    <div class="tanque" role="img" aria-label="Agua: ${litros(ml)} de ${litros(m)} litros">
+      <div class="nivel" style="height:${nivel}%">${ml?`<div class="ola b"></div><div class="ola"></div>
+        <div class="burbs"><span class="burb" style="left:18%;animation-delay:.3s"></span><span class="burb" style="left:47%;animation-delay:1.8s"></span><span class="burb" style="left:76%;animation-delay:3.1s"></span></div>`:''}</div>
+      <div class="txt">${litros(ml)} L<small>de ${litros(m)} L</small></div>
+    </div>
+    <div class="row" style="margin-top:10px;flex-wrap:nowrap">
+      <button style="flex:1" onclick="sumarAgua('${f}',250)">+ Vaso<br><span class="mu">250 ml</span></button>
+      <button style="flex:1" onclick="sumarAgua('${f}',500)">+ Botella<br><span class="mu">500 ml</span></button>
+      <button style="min-width:56px;font-size:1.4rem" onclick="sumarAgua('${f}',-250)" aria-label="Sacar 250 ml">−</button>
+    </div></div>`;
+}
+function sumarAgua(f,ml){
+  const v=Math.max(0,aguaDe(f)+ml),antes=aguaDe(f);
+  guardar('agua/'+f,v||null);
+  if(ml>0&&antes<metaAgua()&&v>=metaAgua())toast('💧 ¡Llegaste a la meta de agua!','ok',3500);
+  else toast(ml>0?'+'+ml+' ml':'−'+(-ml)+' ml');
+}
 function htmlCalMacros(t,click){
   const mk=meta('kcal'),resta=mk?mk-t.kcal:null,cl=click?` onclick="ir('dieta')" style="cursor:pointer"`:'';
   const MAC=[['c','Carbos','var(--amber)'],['g','Grasas','#c084fc'],['p','Proteínas','var(--blue)']];
@@ -498,6 +537,7 @@ function pDieta(){
     ${sem.map((x,i)=>`<button class="dia${x===f?' on':''}" onclick="diaDieta='${x}';agregarEn='';pintar()" ${x>hoy()?'disabled':''}><span class="${x===hoy()?'hoyl':''}">${LET[i]}</span>${anillo(x,x===f)}</button>`).join('')}
     <button class="x" onclick="diaDieta=sumarDias('${lun}',7)>hoy()?null:sumarDias('${lun}',7);agregarEn='';pintar()" aria-label="Semana siguiente">›</button></div>
   ${htmlCalMacros(t)}
+  ${htmlAgua(f)}
   <h2 style="margin:16px 2px 8px">Comidas</h2>
   ${MOMENTOS.map(([k,n,ic])=>{const g=grupos[k]||[],tk=totales(g);return `<div class="card momento">
     <div class="row sp" style="flex-wrap:nowrap"><span style="flex:1;min-width:0"><b>${ic} ${n}</b>${g.length?`<div class="mu">${fmt(tk.kcal)} cal · P ${fmt(tk.p)} g</div>`:''}</span>
@@ -610,6 +650,7 @@ function importar(){
       guardar(rama+'/'+id,o);n++;
     }
   }
+  if(d.agua&&typeof d.agua==='object')for(const [f,ml] of Object.entries(d.agua)){if(/^\d{4}-\d{2}-\d{2}$/.test(f)&&num(ml)!=null){guardar('agua/'+f,num(ml)||null);n++;}else malos.push('agua: '+f);}
   if(d.config&&typeof d.config==='object'){guardar('config',Object.assign({},S.config||{},d.config));n++;}
   for(const r of d.borrar||[]){if(/^(peso|comidas|entrenos|rutinas)\/[^/]+$/.test(r)){guardar(r,null);n++;}else malos.push('no se puede borrar '+r);}
   res.textContent=(n?'✓ '+n+' cargado'+(n===1?'':'s'):'')+(malos.length?' · ❌ '+malos.join(' · '):'');

@@ -37,7 +37,8 @@ Subir cada cambio a `main` con un mensaje claro.
   - `rutinas/{id}`: `{n:'Pecho y tríceps', orden:1, ejercicios:[{n, series, reps, kg}]}`. La rutina que "toca" es la que sigue (por `orden`) a la última hecha.
   - `comidas/{id}`: `{f, m:'desayuno'|'almuerzo'|'merienda'|'cena'|'colacion', n:'Pollo con arroz', kcal, p, c, g, t}`.
     `m` es en qué comida del día va (la pantalla Dieta las agrupa así); el nombre va sin "Desayuno:" adelante. Las "comidas frecuentes" salen solas de lo cargado (no se guardan aparte).
-  - `config`: `{kcal, p, c, g, pesoMeta}` (metas por día).
+  - `agua/{AAAA-MM-DD}`: mililitros tomados ese día (un número). En la carga: `"agua":{"2026-10-31":1500}` pone el total del día.
+  - `config`: `{kcal, p, c, g, agua (ml, si no 3000), pesoMeta, descanso (segundos, si no 180)}` (metas por día).
   - `fotos/{id}`: `{f, mini: foto chiquita en texto (data:image/jpeg), nota, t}` y `fotosFull/{id}`: la foto grande (se baja sólo al abrirla).
     Las fotos van a la base, NUNCA al repositorio (es público).
 - Sin internet: la app muestra lo último que vio (guardado en el teléfono) y lo que se carga queda en una cola en el teléfono que se
@@ -63,7 +64,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 (tipo "GCP access token (with Service Account Key)", con la clave de la cuenta de servicio de Firebase Admin, para el sitio
 `fisico-e6489-default-rtdb.firebaseio.com`): la nube la agrega sola a cada pedido y Claude nunca la ve. Nunca en el repo ni en un mensaje.
 (Si algún día se usa la variable `FIREBASE_SECRET`, el script también la toma.)
-- Leer: `python3 tools/fisico.py leer comidas --desde 2026-10-01` (también `peso`, `entrenos`, `rutinas`, `config`, `fotos`).
+- Leer: `python3 tools/fisico.py leer comidas --desde 2026-10-01` (también `peso`, `entrenos`, `rutinas`, `config`, `fotos`, `agua`).
 - Cargar: escribir el bloque (mismo formato de arriba) en `/tmp/carga.json` —nunca dentro del repo, que es público— y
   `python3 tools/fisico.py cargar /tmp/carga.json`. Después releer con `leer` para confirmar.
 - Foto que manda por el chat, si queda como archivo: `python3 tools/fisico.py foto /tmp/foto.jpg --fecha 2026-10-31 --nota "de frente"`
