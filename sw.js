@@ -1,6 +1,6 @@
 // Service worker de Físico: guarda la app (mismo origen) para que abra como app instalada y sin internet.
 // Cada vez que se toca index.html se sube este número: así el teléfono baja la versión nueva sola.
-const CACHE = "fisico-v11";
+const CACHE = "fisico-v12";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {

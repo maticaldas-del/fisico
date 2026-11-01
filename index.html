@@ -169,8 +169,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.09';
+const APP_VERSION='1.10';
 const APP_CAMBIOS=[
+  {v:'1.10',f:'01/11',h:'01:10',c:[{n:2,t:'Más nutrientes: cloro y flúor (el flúor también cuenta el agua que tomás), omega 3 vegetal y omega 6, y como límites para no pasarse: grasas trans, colesterol y cafeína.'}]},
   {v:'1.09',f:'01/11',h:'00:50',c:[{n:2,t:'En el inicio podés elegir el día: con la semana de arriba (los círculos), con las flechas, o tocando la fecha para abrir el calendario. Muestra el peso, el entreno, la comida, las vitaminas y el agua de ese día. El día elegido es el mismo en Inicio y en Dieta.'}]},
   {v:'1.08',f:'01/11',h:'00:35',c:[{n:2,t:'Si la app se queda en "Cargando…", a los 8 segundos aparece un botón para recargarla de cero. Y el teléfono ya no se queda con una versión vieja guardada.'}]},
   {v:'1.07',f:'01/11',h:'00:50',c:[{n:3,t:'Tu plan de comidas como predeterminado: desde el domingo, cada comida que todavía no cargaste muestra lo del plan medio transparente, y las barras (calorías, macros, vitaminas) muestran cómo terminarías el día. Con ✓ lo pasás a comido; si comés otra cosa, lo del plan de esa comida desaparece.'}]},
@@ -551,20 +552,25 @@ const NUTRI=[
    ['b1','B1 (tiamina)','mg',1.2],['b2','B2 (riboflavina)','mg',1.3],['b3','B3 (niacina)','mg',16],['b5','B5 (ác. pantoténico)','mg',5],['b6','B6','mg',1.3],
    ['b7','B7 (biotina)','µg',30],['b9','B9 (ácido fólico)','µg',400],['b12','B12','µg',2.4],['col','Colina','mg',550]]],
  ['Minerales',[['ca','Calcio','mg',1000],['fe','Hierro','mg',8],['mg','Magnesio','mg',420],['fos','Fósforo','mg',700],['k','Potasio','mg',3400],['zn','Zinc','mg',11],
-   ['cu','Cobre','mg',0.9],['mn','Manganeso','mg',2.3],['se','Selenio','µg',55],['i','Yodo','µg',150],['cr','Cromo','µg',35],['mo','Molibdeno','µg',45]]],
- ['Otros',[['fib','Fibra','g',30],['o3','Omega 3 (EPA + DHA)','mg',250]]],
- ['No pasarse de',[['na','Sodio','mg',2300,'max'],['az','Azúcar agregada','g',50,'max'],['sat','Grasa saturada','g',19,'max']]],
+   ['cu','Cobre','mg',0.9],['mn','Manganeso','mg',2.3],['se','Selenio','µg',55],['i','Yodo','µg',150],['cr','Cromo','µg',35],['mo','Molibdeno','µg',45],
+   ['cl','Cloro','mg',2300],['fl','Flúor','mg',4]]],
+ ['Otros',[['fib','Fibra','g',30],['o3','Omega 3 (pescado)','mg',250],['ala','Omega 3 (vegetal)','g',1.6],['o6','Omega 6','g',17]]],
+ ['No pasarse de',[['na','Sodio','mg',2300,'max'],['az','Azúcar agregada','g',50,'max'],['sat','Grasa saturada','g',19,'max'],['tr','Grasas trans','g',2,'max'],['chol','Colesterol','mg',300,'max'],['caf','Cafeína','mg',400,'max']]],
 ];
+// El agua de la canilla trae flúor (se estima 0,5 mg por litro): se suma al del día.
+function totalesMiDia(f,cs){const t=totalesMi(cs);const a=aguaDe(f);if(a)t.fl=(t.fl||0)+a*0.0005;return t;}
 function totalesMi(cs){const t={};for(const c of cs)for(const [k,v] of Object.entries(c.mi||{})){const n=num(v);if(n!=null)t[k]=(t[k]||0)+n;}return t;}
+// Llegó a la meta si, redondeado como se muestra, es igual o más (así nunca dice 0,9 / 0,9 sin tachar).
+const llego=(v,m)=>Math.round(v*10)>=Math.round(m*10)||v>=m*0.995;
 const fmtMi=n=>n>=100?fmt(n):(Math.round(n*10)/10).toLocaleString('es-AR',{maximumFractionDigits:1});
-function resumenMi(f){const t=totalesMi(comidasDe(f));let ok=0,tot=0;for(const [,xs] of NUTRI)for(const [k,,,m,tipo] of xs){if(tipo==='max')continue;tot++;if((t[k]||0)>=m*0.995)ok++;}return {ok,tot};}
+function resumenMi(f){const t=totalesMiDia(f,comidasDe(f));let ok=0,tot=0;for(const [,xs] of NUTRI)for(const [k,,,m,tipo] of xs){if(tipo==='max')continue;tot++;if(llego(t[k]||0,m))ok++;}return {ok,tot};}
 function htmlNutri(f){
-  const cs=comidasDe(f),t=totalesMi(cs),tp=totalesMi(cs.concat(fantasmas(f))),hayPlan=fantasmas(f).length>0,sin=cs.filter(c=>!c.mi).length,{ok,tot}=resumenMi(f);
+  const cs=comidasDe(f),t=totalesMiDia(f,cs),tp=totalesMiDia(f,cs.concat(fantasmas(f))),hayPlan=fantasmas(f).length>0,sin=cs.filter(c=>!c.mi).length,{ok,tot}=resumenMi(f);
   return `<details class="card nutri" ${_nutriAbierto?'open':''} ontoggle="_nutriAbierto=this.open">
     <summary><span style="flex:1;color:var(--text)"><b>🧪 Vitaminas y minerales</b></span><span class="mu">${ok} de ${tot} completos ›</span></summary>
     ${sin?`<div class="mu" style="margin:6px 0">${sin} comida${sin>1?'s':''} sin estos datos (no suma${sin>1?'n':''} acá).</div>`:''}
     ${NUTRI.map(([g,xs])=>`<div class="mu" style="margin:12px 0 4px;font-weight:700;text-transform:uppercase;font-size:.72rem;letter-spacing:.05em">${g}</div>
-      <div class="ngrid">${xs.map(([k,n,u,m,tipo])=>{const v=t[k]||0,vp=tp[k]||0,pct=Math.min(100,v/m*100),pctP=Math.max(0,Math.min(100,vp/m*100)-pct),hecho=tipo!=="max"&&v>=m*0.995,pasado=tipo==='max'&&v>m;
+      <div class="ngrid">${xs.map(([k,n,u,m,tipo])=>{const v=t[k]||0,vp=tp[k]||0,pct=Math.min(100,v/m*100),pctP=Math.max(0,Math.min(100,vp/m*100)-pct),hecho=tipo!=="max"&&llego(v,m),pasado=tipo==='max'&&v>m;
         return `<div class="nut${hecho?' hecho':''}${pasado?' pasado':''}"><div class="row sp" style="flex-wrap:nowrap;gap:6px"><span class="nn">${hecho?'✓ ':pasado?'⚠️ ':''}${n}</span><span class="nv">${fmtMi(v)} / ${fmtMi(m)} ${u}</span></div>
           <div class="bar" style="height:6px;margin-top:4px"><i style="width:${pct}%;background:${tipo==='max'?(pasado?'var(--red)':'var(--muted)'):(hecho?'var(--accent)':'var(--blue)')}"></i>${hayPlan&&pctP>0?`<i class="fan" style="width:${pctP}%;background:${tipo==='max'?(vp>m?'var(--red)':'var(--muted)'):'var(--accent)'}"></i>`:''}</div></div>`;}).join('')}</div>`).join('')}
     <div class="mu" style="margin-top:12px">Lo calcula Claude con cada comida que carga: es una estimación. Se tacha con ✓ cuando llegás a lo del día.${hayPlan?' Lo transparente es lo que sumaría el plan si lo cumplís.':''}</div>
