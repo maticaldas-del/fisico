@@ -156,8 +156,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.04';
+const APP_VERSION='1.05';
 const APP_CAMBIOS=[
+  {v:'1.05',f:'01/11',h:'00:20',c:[{n:1,t:'El botón + Vaso del agua ahora suma 350 ml (tu vaso), y el − saca lo mismo.'}]},
   {v:'1.04',f:'01/11',h:'00:10',c:[{n:3,t:'Vitaminas y minerales en la Dieta: las 14 vitaminas, 12 minerales, fibra y omega 3, cada una con su barra contra lo que necesitás por día; se tachan con ✓ cuando llegás. Abajo, sodio, azúcar y grasa saturada como límites para no pasarse. En el inicio, cuántas llevás completas.'}]},
   {v:'1.03',f:'01/11',h:'00:05',c:[{n:2,t:'Agua en el inicio y en la Dieta: un tanque que se va llenando (con olas y burbujas) contra la meta de 3 litros, con botones + Vaso (250 ml), + Botella (500 ml) y − para corregir.'}]},
   {v:'1.02',f:'31/10',h:'21:15',c:[{n:3,t:'Dieta nueva, como la app que usabas: la semana con un círculo por día que se llena con las calorías, racha 🔥 de días cargados, calorías con lo que resta, carbohidratos, grasas y proteínas lado a lado, y las comidas separadas en Desayuno, Almuerzo, Merienda, Cena y Colaciones, cada una con su botón para agregar. El inicio muestra lo mismo.'}]},
@@ -543,9 +544,9 @@ function htmlAgua(f){
       <div class="txt">${litros(ml)} L<small>de ${litros(m)} L</small></div>
     </div>
     <div class="row" style="margin-top:10px;flex-wrap:nowrap">
-      <button style="flex:1" onclick="sumarAgua('${f}',250)">+ Vaso<br><span class="mu">250 ml</span></button>
+      <button style="flex:1" onclick="sumarAgua('${f}',350)">+ Vaso<br><span class="mu">350 ml</span></button>
       <button style="flex:1" onclick="sumarAgua('${f}',500)">+ Botella<br><span class="mu">500 ml</span></button>
-      <button style="min-width:56px;font-size:1.4rem" onclick="sumarAgua('${f}',-250)" aria-label="Sacar 250 ml">−</button>
+      <button style="min-width:56px;font-size:1.4rem" onclick="sumarAgua('${f}',-350)" aria-label="Sacar 350 ml">−</button>
     </div></div>`;
 }
 function sumarAgua(f,ml){
