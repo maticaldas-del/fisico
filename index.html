@@ -120,6 +120,19 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .tanque .txt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:1.6rem;text-shadow:0 1px 4px rgba(0,0,0,.6)}
 .tanque .txt small{font-size:.8rem;font-weight:600;opacity:.9}
 @media (prefers-reduced-motion:reduce){.tanque .ola,.tanque .burb{animation:none}}
+.selmed{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px}
+.selmed label{display:flex;align-items:center;gap:6px;margin:0;font-size:1.2rem;color:var(--text)}
+.selmed select{border:none;background:transparent;color:var(--blue);font-weight:600;text-align:right;padding:0 4px}
+.resumen3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.resumen3>div{display:flex;flex-direction:column;min-width:0}
+.resumen3 b{font-size:1.1rem;white-space:nowrap}
+.resumen3 span{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.entradas{padding:0 14px}
+.ent{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.ent:last-child{border-bottom:none}
+.ent .gr{flex:1;min-width:0}
+.ent img,.ent .sinfoto{width:64px;height:64px;border-radius:8px;object-fit:cover;flex:none;cursor:pointer}
+.ent .sinfoto{display:flex;align-items:center;justify-content:center;background:var(--surface2);font-size:1.5rem;margin:0}
 .estado{font-size:.75rem;color:var(--muted);text-align:center;margin-top:6px}
 #descanso{position:fixed;left:0;right:0;bottom:calc(64px + env(safe-area-inset-bottom));z-index:60;display:none;align-items:center;gap:6px;padding:8px 12px;background:var(--surface2);border-top:1px solid var(--accent)}
 #descanso #d-txt{flex:1;white-space:nowrap;overflow:hidden;font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums}
@@ -170,8 +183,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.15';
+const APP_VERSION='1.16';
 const APP_CAMBIOS=[
+  {v:'1.16',f:'01/11',h:'16:45',c:[{n:3,t:'Pantalla Peso nueva, como la que usabas: elegís la medida (peso, cintura, pecho, brazo, pierna, % grasa) y el período (1 mes a todo), ves Inicial / Actual / Cambio con %, un gráfico grande y la lista de entradas con la foto de ese día. El + de arriba agrega peso, medidas y foto.'}]},
   {v:'1.15',f:'01/11',h:'16:25',c:[{n:1,t:'Saqué el entreno del inicio: está en su pantalla, Entreno.'}]},
   {v:'1.14',f:'01/11',h:'16:15',c:[{n:2,t:'Arreglado: al abrir una foto no se podía salir en el iPhone (la cruz quedaba tapada por la hora). Ahora hay un botón verde "Cerrar" arriba y otro abajo, y también sale con el gesto de volver.'}]},
   {v:'1.13',f:'01/11',h:'11:10',c:[{n:1,t:'El botón + Vaso del agua suma 300 ml (contando para abajo), y el − saca lo mismo.'}]},
@@ -215,7 +229,7 @@ document.addEventListener('visibilitychange',()=>{
   if(diaDieta&&_ocultaDesde&&Date.now()-_ocultaDesde>5*60e3){diaDieta=null;agregarEn='';pintarPronto();}
 });
 setInterval(()=>{const h=hoy();if(_hoyVisto&&h!==_hoyVisto){diaDieta=null;pintarPronto();}_hoyVisto=h;},60e3);
-let diaDieta=null,rangoPeso=60,ejGraf='';
+let diaDieta=null,rangoPeso=365,ejGraf='';
 
 // ── AYUDAS ──
 const $=id=>document.getElementById(id);
@@ -370,30 +384,78 @@ function htmlCambios(max=10){
 
 // ── PESO Y MEDIDAS ──
 const MEDIDAS=[['cintura','Cintura','cm'],['pecho','Pecho','cm'],['brazo','Brazo','cm'],['pierna','Pierna','cm'],['grasa','% grasa','%']];
+// Pantalla Peso y medidas, armada como la app que usaba (Measurements): elegir qué medida y qué período, Inicial / Actual / Cambio,
+// gráfico grande y la lista de entradas con la foto de ese día.
+const RANGOS=[[30,'1 mes'],[90,'3 meses'],[180,'6 meses'],[365,'1 año'],[0,'Todo']];
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const DIAS_L=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+function fechaLarga(f){const d=new Date(f+'T12:00:00');return DIAS_L[d.getDay()]+', '+d.getDate()+' de '+MESES[d.getMonth()]+' de '+d.getFullYear();}
+let medidaVer='kg',pesoForm=false;
+function fotosDelDia(f){return lista(S.fotos).filter(x=>x.f===f).sort((a,b)=>(a.t||0)-(b.t||0));}
 function pPeso(){
-  const ps=pesosOrd();const desde=rangoPeso?sumarDias(hoy(),-rangoPeso):'';
-  const pts=ps.filter(p=>!desde||p.f>=desde).map(p=>({f:p.f,y:p.kg}));
-  const ms=medidasOrd();
-  const medHtml=MEDIDAS.map(([k,n,u])=>{const con=ms.filter(x=>num(x[k])!=null);if(!con.length)return '';
-    const a=num(con[0][k]),b=num(con[con.length-1][k]);
-    return `<div class="row sp" style="padding:6px 0"><span>${n}</span><span><b>${fmt(b,1)} ${u}</b>${con.length>1?` <span class="mu">(${b-a<=0?'':'+'}${fmt(b-a,1)} desde ${fechaLinda(con[0].f)})</span>`:''}</span></div>`;}).join('');
-  return `<h1>Peso y medidas</h1>
-  <div class="card">
-    <div class="row"><div class="campo"><label for="p-f">Fecha</label><input id="p-f" type="date" value="${hoy()}"></div>
-    <div class="campo"><label for="p-kg">Peso (kg)</label><input id="p-kg" inputmode="decimal" placeholder="82,4"></div></div>
+  const OPC=[['kg','Peso','kg']].concat(MEDIDAS);
+  const [mk,mn,mu]=OPC.find(x=>x[0]===medidaVer)||OPC[0];
+  const desde=rangoPeso?sumarDias(hoy(),-rangoPeso):'';
+  const todos=medidasOrd().filter(p=>num(p[mk])!=null);
+  const enRango=todos.filter(p=>!desde||p.f>=desde);
+  const pts=enRango.map(p=>({f:p.f,y:num(p[mk])}));
+  const ini=pts[0],act=pts[pts.length-1],dif=ini&&act?act.y-ini.y:null,pct=ini&&ini.y?dif/ini.y*100:null;
+  const bajarEsBueno=['kg','cintura','grasa'].includes(mk);
+  const colDif=dif==null||Math.abs(dif)<0.05?'var(--muted)':((dif<0)===bajarEsBueno?'var(--accent)':'var(--amber)');
+  const v1=n=>(Math.round(n*10)/10).toLocaleString('es-AR',{maximumFractionDigits:1});
+  return `<div class="row sp" style="margin-bottom:12px;flex-wrap:nowrap"><h1 style="margin:0">Medidas</h1>
+    <button class="pri" style="min-width:52px;font-size:1.4rem" onclick="pesoForm=!pesoForm;pintar()" aria-label="Agregar">${pesoForm?'✕':'+'}</button></div>
+  ${pesoForm?`<div class="card">
+    <div class="row"><div class="campo"><label for="p-f">Fecha</label><input id="p-f" type="date" value="${hoy()}" max="${hoy()}"></div>
+    <div class="campo"><label for="p-kg">Peso (kg)</label><input id="p-kg" inputmode="decimal" placeholder="80,4"></div></div>
     <details style="margin-top:6px"><summary>Agregar medidas (opcional)</summary>
       <div class="grid2">${MEDIDAS.map(([k,n,u])=>`<div><label for="p-${k}">${n} (${u})</label><input id="p-${k}" inputmode="decimal"></div>`).join('')}</div>
     </details>
+    <label class="btn" style="display:flex;align-items:center;justify-content:center;margin-top:10px">📸 Sumar foto de ese día (opcional)<input type="file" accept="image/*" multiple style="display:none" onchange="subirFotos(this.files,$('p-f').value||hoy(),'')"></label>
+    <div id="f-estado" class="estado"></div>
     <button class="pri" style="width:100%;margin-top:10px" onclick="guardarPeso()">Guardar</button>
+  </div>`:''}
+  <div class="card selmed">
+    <label>📊<select aria-label="Qué medida" onchange="medidaVer=this.value;this.blur();pintar()">${OPC.map(([k,n])=>`<option value="${k}" ${k===mk?'selected':''}>${n}</option>`).join('')}</select></label>
+    <label>📅<select aria-label="Período" onchange="rangoPeso=+this.value;this.blur();pintar()">${RANGOS.map(([d,n])=>`<option value="${d}" ${d===rangoPeso?'selected':''}>${n}</option>`).join('')}</select></label>
   </div>
-  <div class="card"><div class="row sp"><h2 style="margin:0">Evolución</h2><div class="row">
-    <button class="chip ${rangoPeso===60?'on':''}" onclick="rangoPeso=60;pintar()">60 días</button><button class="chip ${!rangoPeso?'on':''}" onclick="rangoPeso=0;pintar()">Todo</button></div></div>
-    <div style="margin-top:8px">${grafico(pts,{unidad:' kg'})}</div>
-    ${pts.length>1?`<div class="mu">${fmtKg(pts[0].y)} → ${fmtKg(pts[pts.length-1].y)} kg · ${pts[pts.length-1].y-pts[0].y<=0?'':'+'}${fmtKg(pts[pts.length-1].y-pts[0].y)} kg</div>`:''}
+  <div class="card resumen3">
+    <div><b>${ini?v1(ini.y)+' '+mu:'–'}</b><span>Inicial</span></div>
+    <div><b>${act?v1(act.y)+' '+mu:'–'}</b><span>Actual</span></div>
+    <div><b style="color:${colDif}">${dif==null?'–':(dif<0?'↘ ':dif>0?'↗ ':'')+v1(Math.abs(dif))+' '+mu}</b><span>Cambio${pct!=null&&dif?` (${dif<0?'−':'+'}${v1(Math.abs(pct))}%)`:''}</span></div>
   </div>
-  ${medHtml?`<div class="card"><h2>Medidas</h2>${medHtml}</div>`:''}
-  <div class="card"><h2>Historial</h2><div class="lista">${ms.slice().reverse().slice(0,40).map(p=>`<div><span class="gr">${fechaLinda(p.f)} · <b>${p.kg!=null?fmtKg(p.kg)+' kg':''}</b> <span class="mu">${MEDIDAS.filter(([k])=>num(p[k])!=null).map(([k,n,u])=>n+' '+fmt(num(p[k]),1)+u).join(' · ')}</span></span><button class="x" onclick="borrar('peso/${p.id}','¿Borrar este peso?')" aria-label="Borrar">✕</button></div>`).join('')||'<div class="mu">Todavía no hay nada cargado.</div>'}</div></div>`;
+  <div class="card">${graficoGrande(pts,mu)}</div>
+  <h2 style="margin:16px 2px 8px">Entradas</h2>
+  <div class="card entradas">${todos.slice().reverse().slice(0,120).map(p=>{const fs=fotosDelDia(p.f),ft=fs[0];
+    const otras=MEDIDAS.filter(([k])=>k!==mk&&num(p[k])!=null).map(([k,n,u])=>n+' '+v1(num(p[k]))+' '+u);
+    if(mk!=='kg'&&num(p.kg)!=null)otras.unshift('Peso '+v1(num(p.kg))+' kg');
+    return `<div class="ent"><div class="gr"><b style="font-size:1.15rem">${v1(num(p[mk]))} ${mu}</b><div class="mu">${fechaLarga(p.f)}</div>${otras.length?`<div class="mu" style="font-size:.78rem">${otras.join(' · ')}</div>`:''}</div>
+      ${ft?`<img src="${ft.mini}" alt="Foto del ${fechaLinda(p.f)}" onclick="abrirFotoId('${ft.id}')">`:`<label class="sinfoto" title="Sumar foto de ese día">🖼️<input type="file" accept="image/*" multiple style="display:none" onchange="subirFotos(this.files,'${p.f}','')"></label>`}
+      <button class="x" onclick="borrar('peso/${p.id}','¿Borrar esta entrada del ${fechaLinda(p.f)}?')" aria-label="Borrar">✕</button></div>`;}).join('')||'<div class="mu">Todavía no hay nada cargado. Tocá + para agregar.</div>'}</div>`;
 }
+// Gráfico grande con líneas de referencia y fechas abajo.
+function graficoGrande(pts,unidad){
+  if(pts.length<2)return `<div class="mu" style="padding:30px 0;text-align:center">${pts.length?'Con dos datos o más aparece el gráfico.':'No hay datos en este período.'}</div>`;
+  const W=340,H=190,L=30,R=8,T=10,B=24;
+  const xs=pts.map(p=>new Date(p.f+'T12:00:00').getTime()),ys=pts.map(p=>p.y);
+  let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  if(x1===x0)x1=x0+864e5;
+  const paso=(y1-y0)<=4?1:(y1-y0)<=10?2:(y1-y0)<=25?5:10;
+  y0=Math.floor(y0/paso)*paso-(paso);y1=Math.ceil(y1/paso)*paso+(paso);if(y0<0)y0=0;
+  const X=x=>L+(x-x0)/(x1-x0)*(W-L-R),Y=y=>T+(y1-y)/(y1-y0)*(H-T-B);
+  let g='';for(let y=y0;y<=y1+1e-9;y+=paso)g+=`<line x1="${L}" y1="${Y(y).toFixed(1)}" x2="${W-R}" y2="${Y(y).toFixed(1)}" stroke="#2a2a30"/><text x="${L-5}" y="${(Y(y)+3).toFixed(1)}" fill="#8a8a99" font-size="9" text-anchor="end">${y}</text>`;
+  const N=5;for(let i=0;i<N;i++){const t=x0+(x1-x0)*i/(N-1),d=new Date(t);g+=`<text x="${X(t).toFixed(1)}" y="${H-6}" fill="#8a8a99" font-size="9" text-anchor="${i===0?'start':i===N-1?'end':'middle'}">${d.getDate()}/${d.getMonth()+1}</text>`;}
+  const d=pts.map((p,i)=>X(xs[i]).toFixed(1)+','+Y(p.y).toFixed(1)).join(' ');
+  const area=`${X(xs[0]).toFixed(1)},${Y(y0)} ${d} ${X(xs[xs.length-1]).toFixed(1)},${Y(y0)}`;
+  return `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de ${unidad}">
+    <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4ade80" stop-opacity=".25"/><stop offset="1" stop-color="#4ade80" stop-opacity="0"/></linearGradient></defs>
+    ${g}<polygon points="${area}" fill="url(#ga)"/>
+    <polyline fill="none" stroke="#4ade80" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" points="${d}"/>
+    ${pts.length<=40?pts.map((p,i)=>`<circle cx="${X(xs[i]).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="2.6" fill="#4ade80"/>`).join(''):''}
+    <circle cx="${X(xs[xs.length-1]).toFixed(1)}" cy="${Y(ys[ys.length-1]).toFixed(1)}" r="4.5" fill="#4ade80" stroke="#0f0f11" stroke-width="2"/>
+  </svg>`;
+}
+function abrirFotoId(id){const fs=lista(S.fotos).sort((a,b)=>a.f<b.f?1:a.f>b.f?-1:(b.t||0)-(a.t||0));fotosVis=fs;const i=fs.findIndex(x=>x.id===id);if(i>=0)abrirVisor(i);}
 function guardarPeso(){
   const f=$('p-f').value||hoy(),kg=num($('p-kg').value);
   const o={f,t:Date.now()};if(kg!=null)o.kg=kg;
@@ -401,7 +463,7 @@ function guardarPeso(){
   if(Object.keys(o).length<=2){toast('Poné el peso o alguna medida','err');return;}
   if(kg!=null&&(kg<30||kg>250)){toast('Ese peso no parece correcto','err');return;}
   document.activeElement&&document.activeElement.blur();
-  guardar('peso/'+nuevoId(),o);toast('Guardado');
+  pesoForm=false;guardar('peso/'+nuevoId(),o);toast('Guardado');
 }
 function borrar(ruta,pregunta){if(pregunta&&!confirm(pregunta))return;guardar(ruta,null);toast('Borrado');}
 
@@ -697,8 +759,8 @@ function achicar(archivo,max,calidad){
       c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);ok(c.toDataURL('image/jpeg',calidad));};
     img.onerror=()=>{URL.revokeObjectURL(url);mal(new Error('no se pudo leer la imagen'));};img.src=url;});
 }
-async function subirFotos(archivos){
-  const f=$('f-f').value||hoy(),nota=$('f-nota').value.trim(),est=$('f-estado');let hechas=0;
+async function subirFotos(archivos,fecha,notaP){
+  const f=fecha||($('f-f')&&$('f-f').value)||hoy(),nota=notaP!=null?notaP:(($('f-nota')&&$('f-nota').value.trim())||''),est=$('f-estado')||{set textContent(_){}};let hechas=0;
   for(const a of archivos){
     try{est.textContent='Subiendo '+(hechas+1)+' de '+archivos.length+'…';
       const full=await achicar(a,1600,.82),mini=await achicar(a,320,.7);const id=nuevoId();
