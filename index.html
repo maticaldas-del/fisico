@@ -49,7 +49,11 @@ input,select,textarea{font:inherit;min-height:44px;width:100%;padding:8px 10px;b
 textarea{min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:.85rem}
 label{display:block;font-size:.8rem;color:var(--muted);margin:0 0 4px}
 .campo{flex:1 1 90px}
-.bar{height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-top:6px}
+.bar{height:10px;background:var(--border);border-radius:5px;overflow:hidden;margin-top:6px;display:flex}
+.bar i.fan{opacity:.35;border-radius:0 5px 5px 0}
+.fantasma{opacity:.5}
+.fantasma .gr{font-style:italic}
+.plantag{font-size:.7rem;border:1px dashed var(--border2);border-radius:6px;padding:1px 6px;color:var(--muted);margin-left:4px;font-style:normal}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:5px}
 .chip{display:inline-flex;align-items:center;min-height:40px;padding:6px 14px;border:1px solid var(--border2);border-radius:999px;background:transparent;color:var(--text);font-size:.9rem}
 .chip.on{background:var(--accent);color:var(--accent-dark);border-color:var(--accent);font-weight:700}
@@ -156,8 +160,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.06';
+const APP_VERSION='1.07';
 const APP_CAMBIOS=[
+  {v:'1.07',f:'01/11',h:'00:50',c:[{n:3,t:'Tu plan de comidas como predeterminado: desde el domingo, cada comida que todavía no cargaste muestra lo del plan medio transparente, y las barras (calorías, macros, vitaminas) muestran cómo terminarías el día. Con ✓ lo pasás a comido; si comés otra cosa, lo del plan de esa comida desaparece.'}]},
   {v:'1.06',f:'01/11',h:'00:35',c:[{n:2,t:'El día termina a las 4 de la mañana: lo que comés o tomás a las 24 h queda en el día que termina, no en el siguiente. Las comidas se ubican solas según tus horarios (11, 16, 20 y 24 h).'}]},
   {v:'1.05',f:'01/11',h:'00:20',c:[{n:1,t:'El botón + Vaso del agua ahora suma 350 ml (tu vaso), y el − saca lo mismo.'}]},
   {v:'1.04',f:'01/11',h:'00:10',c:[{n:3,t:'Vitaminas y minerales en la Dieta: las 14 vitaminas, 12 minerales, fibra y omega 3, cada una con su barra contra lo que necesitás por día; se tachan con ✓ cuando llegás. Abajo, sodio, azúcar y grasa saturada como límites para no pasarse. En el inicio, cuántas llevás completas.'}]},
@@ -180,7 +185,7 @@ const FIREBASE_CONFIG={
 };
 const RAIZ='fisico';
 // Lo que se escucha en vivo. Las fotos grandes (fotosFull) NO: se bajan de a una cuando se abren.
-const RAMAS=['peso','entrenos','rutinas','comidas','config','fotos','agua'];
+const RAMAS=['peso','entrenos','rutinas','comidas','config','fotos','agua','plan'];
 const CACHE_KEY='fisico_cache_v1',COLA_KEY='fisico_cola_v1';
 
 let db=null,usuario=null,pagina='inicio';
@@ -268,6 +273,12 @@ function grafico(pts,{color='#4ade80',dec=1,unidad=''}={}){
     <text x="${W-P}" y="${H+12}" fill="#8a8a99" font-size="9" text-anchor="end">${fechaLinda(ult.f)}</text>
   </svg>`;
 }
+// Barra con lo comido y, más transparente, lo que falta del plan (suposición).
+function barra2(valor,plan,meta,color){
+  if(!meta)return barra(valor,meta,color);
+  const a=Math.min(100,valor/meta*100),b=Math.max(0,Math.min(100,plan/meta*100)-a);
+  return `<div class="bar"><i style="width:${a}%;background:${color||'var(--accent)'}"></i>${b>0?`<i class="fan" style="width:${b}%;background:${color||'var(--accent)'}"></i>`:''}</div>`;
+}
 function barra(valor,meta,color){
   const pct=meta?Math.min(100,Math.round(valor/meta*100)):0;
   return `<div class="bar"><i style="width:${pct}%;background:${color||'var(--accent)'}"></i></div>`;
@@ -319,7 +330,7 @@ function pInicio(){
     <div class="big">${u?fmtKg(u.kg)+' kg':'–'} ${dif!=null?`<span style="font-size:.95rem;color:${dif<=0?'var(--accent)':'var(--amber)'}">${dif<=0?'▼':'▲'} ${fmtKg(Math.abs(dif))}</span>`:''}</div>
     ${meta('pesoMeta')&&u?`<div class="mu">Meta ${fmtKg(meta('pesoMeta'))} kg · faltan ${fmtKg(Math.abs(u.kg-meta('pesoMeta')))} kg</div>`:''}</div>
   <div class="card"><div class="mu">Entreno</div>${entTxt}</div>
-  ${htmlCalMacros(t,true)}
+  ${htmlCalMacros(t,true,totales(comidasDe(hoy()).concat(fantasmas(hoy()))))}
   ${(()=>{const r=resumenMi(hoy());return `<div class="card row sp" onclick="ir('dieta')" style="cursor:pointer;flex-wrap:nowrap"><span>🧪 Vitaminas y minerales</span><b>${r.ok} de ${r.tot} ✓</b></div>`;})()}
   ${htmlAgua(hoy())}
   ${htmlCambios()}`;
@@ -506,6 +517,19 @@ function frecuentes(){
   for(const c of lista(S.comidas).filter(c=>c.f>=desde&&c.n)){const k=normN(nombreComida(c));if(!m[k])m[k]={cant:0,ult:c};m[k].cant++;if((c.t||0)>(m[k].ult.t||0))m[k].ult=c;}
   return Object.values(m).sort((a,b)=>b.cant-a.cant).slice(0,10).map(x=>x.ult);
 }
+// ── PLAN (dieta predeterminada): plan = {desde:'AAAA-MM-DD', items:[{m,n,kcal,p,c,g,mi}]}. Desde 'desde', en hoy y los días
+// que vienen, cada comida del día que todavía no tiene nada cargado muestra lo del plan medio transparente (es una suposición).
+// "✓ Comí esto" lo pasa a comido. Si cargó otra cosa en esa comida, lo del plan de esa comida no se muestra. ──
+const planItems=()=>((S.plan||{}).items||[]).map((x,i)=>Object.assign({i},x));
+const planActivo=f=>!!(S.plan&&S.plan.items&&f>=hoy()&&(!S.plan.desde||f>=S.plan.desde));
+function fantasmas(f){if(!planActivo(f))return [];const reales=new Set(comidasDe(f).map(momentoDe));return planItems().filter(x=>!reales.has(x.m));}
+function comerPlan(f,idx){
+  const xs=planItems().filter(x=>idx==null?true:(typeof idx==='string'?x.m===idx:x.i===idx));
+  let t=Date.now();
+  for(const x of xs){const o={f,t:t++,m:x.m,n:x.n};for(const k of ['kcal','p','c','g'])if(x[k]!=null)o[k]=x[k];if(x.mi)o.mi=x.mi;guardar('comidas/'+nuevoId(),o);}
+  toast(xs.length===1?'✓ '+xs[0].n:'✓ Cargado como en el plan');
+}
+
 // ── VITAMINAS, MINERALES Y DEMÁS: cada comida puede traer mi:{clave:cantidad} (lo estima Claude al cargarla).
 // Metas diarias para un hombre adulto (valores de referencia de EE.UU., los que usan las etiquetas). tipo 'max' = límite que NO hay que pasar.
 const NUTRI=[
@@ -521,15 +545,15 @@ function totalesMi(cs){const t={};for(const c of cs)for(const [k,v] of Object.en
 const fmtMi=n=>n>=100?fmt(n):(Math.round(n*10)/10).toLocaleString('es-AR',{maximumFractionDigits:1});
 function resumenMi(f){const t=totalesMi(comidasDe(f));let ok=0,tot=0;for(const [,xs] of NUTRI)for(const [k,,,m,tipo] of xs){if(tipo==='max')continue;tot++;if((t[k]||0)>=m*0.995)ok++;}return {ok,tot};}
 function htmlNutri(f){
-  const cs=comidasDe(f),t=totalesMi(cs),sin=cs.filter(c=>!c.mi).length,{ok,tot}=resumenMi(f);
+  const cs=comidasDe(f),t=totalesMi(cs),tp=totalesMi(cs.concat(fantasmas(f))),hayPlan=fantasmas(f).length>0,sin=cs.filter(c=>!c.mi).length,{ok,tot}=resumenMi(f);
   return `<details class="card nutri" ${_nutriAbierto?'open':''} ontoggle="_nutriAbierto=this.open">
     <summary><span style="flex:1;color:var(--text)"><b>🧪 Vitaminas y minerales</b></span><span class="mu">${ok} de ${tot} completos ›</span></summary>
     ${sin?`<div class="mu" style="margin:6px 0">${sin} comida${sin>1?'s':''} sin estos datos (no suma${sin>1?'n':''} acá).</div>`:''}
     ${NUTRI.map(([g,xs])=>`<div class="mu" style="margin:12px 0 4px;font-weight:700;text-transform:uppercase;font-size:.72rem;letter-spacing:.05em">${g}</div>
-      <div class="ngrid">${xs.map(([k,n,u,m,tipo])=>{const v=t[k]||0,pct=Math.min(100,v/m*100),hecho=tipo!=="max"&&v>=m*0.995,pasado=tipo==='max'&&v>m;
+      <div class="ngrid">${xs.map(([k,n,u,m,tipo])=>{const v=t[k]||0,vp=tp[k]||0,pct=Math.min(100,v/m*100),pctP=Math.max(0,Math.min(100,vp/m*100)-pct),hecho=tipo!=="max"&&v>=m*0.995,pasado=tipo==='max'&&v>m;
         return `<div class="nut${hecho?' hecho':''}${pasado?' pasado':''}"><div class="row sp" style="flex-wrap:nowrap;gap:6px"><span class="nn">${hecho?'✓ ':pasado?'⚠️ ':''}${n}</span><span class="nv">${fmtMi(v)} / ${fmtMi(m)} ${u}</span></div>
-          <div class="bar" style="height:6px;margin-top:4px"><i style="width:${pct}%;background:${tipo==='max'?(pasado?'var(--red)':'var(--muted)'):(hecho?'var(--accent)':'var(--blue)')}"></i></div></div>`;}).join('')}</div>`).join('')}
-    <div class="mu" style="margin-top:12px">Lo calcula Claude con cada comida que carga: es una estimación. Se tacha con ✓ cuando llegás a lo del día.</div>
+          <div class="bar" style="height:6px;margin-top:4px"><i style="width:${pct}%;background:${tipo==='max'?(pasado?'var(--red)':'var(--muted)'):(hecho?'var(--accent)':'var(--blue)')}"></i>${hayPlan&&pctP>0?`<i class="fan" style="width:${pctP}%;background:${tipo==='max'?(vp>m?'var(--red)':'var(--muted)'):'var(--accent)'}"></i>`:''}</div></div>`;}).join('')}</div>`).join('')}
+    <div class="mu" style="margin-top:12px">Lo calcula Claude con cada comida que carga: es una estimación. Se tacha con ✓ cuando llegás a lo del día.${hayPlan?' Lo transparente es lo que sumaría el plan si lo cumplís.':''}</div>
   </details>`;
 }
 let _nutriAbierto=true;
@@ -559,17 +583,19 @@ function sumarAgua(f,ml){
   if(ml>0&&antes<metaAgua()&&v>=metaAgua())toast('💧 ¡Llegaste a la meta de agua!','ok',3500);
   else toast(ml>0?'+'+ml+' ml':'−'+(-ml)+' ml');
 }
-function htmlCalMacros(t,click){
+function htmlCalMacros(t,click,tp){
+  tp=tp||t;const hayPlan=tp.kcal!==t.kcal||tp.p!==t.p;
   const mk=meta('kcal'),resta=mk?mk-t.kcal:null,cl=click?` onclick="ir('dieta')" style="cursor:pointer"`:'';
   const MAC=[['c','Carbos','var(--amber)'],['g','Grasas','#c084fc'],['p','Proteínas','var(--blue)']];
   return `<div class="card"${cl}><div class="mu">Calorías</div>
     <div class="row sp" style="align-items:baseline"><span><span class="big">${fmt(t.kcal)}</span> <span class="mu">cal${mk?' / '+fmt(mk):''}</span></span>
     ${resta!=null?`<span><b style="font-size:1.3rem;color:${resta<0?'var(--amber)':'var(--text)'}">${fmt(Math.abs(resta))}</b> <span class="mu">${resta<0?'de más':'restan'}</span></span>`:''}</div>
-    ${barra(t.kcal,mk,mk&&t.kcal>mk*1.1?'var(--amber)':'')}</div>
-  <div class="card macros"${cl}>${MAC.map(([k,n,col])=>{const m=meta(k);return `<div><div class="mu">${n}</div><div style="white-space:nowrap"><b style="font-size:1.1rem">${fmt(t[k])} g</b>${m?` <span class="mu" style="font-size:.78rem">/ ${fmt(m)}</span>`:''}</div>${barra(t[k],m,col)}</div>`;}).join('')}</div>`;
+    ${barra2(t.kcal,tp.kcal,mk,mk&&t.kcal>mk*1.1?'var(--amber)':'')}
+    ${hayPlan?`<div class="mu fantasma" style="margin-top:6px;opacity:.75">Con el plan del día terminarías en ≈ ${fmt(tp.kcal)} cal · P ${fmt(tp.p)} · C ${fmt(tp.c)} · G ${fmt(tp.g)}</div>`:''}</div>
+  <div class="card macros"${cl}>${MAC.map(([k,n,col])=>{const m=meta(k);return `<div><div class="mu">${n}</div><div style="white-space:nowrap"><b style="font-size:1.1rem">${fmt(t[k])} g</b>${m?` <span class="mu" style="font-size:.78rem">/ ${fmt(m)}</span>`:''}</div>${barra2(t[k],tp[k],m,col)}</div>`;}).join('')}</div>`;
 }
 function pDieta(){
-  const f=diaDieta||hoy(),cs=comidasDe(f),t=totales(cs);
+  const f=diaDieta||hoy(),cs=comidasDe(f),t=totales(cs),fan=fantasmas(f),tp=totales(cs.concat(fan));
   // Semana (lunes a domingo) del día elegido
   const d=new Date(f+'T12:00:00'),lun=sumarDias(f,-((d.getDay()+6)%7));
   const sem=[0,1,2,3,4,5,6].map(i=>sumarDias(lun,i)),LET=['L','M','M','J','V','S','D'],rc=racha();
@@ -578,15 +604,16 @@ function pDieta(){
   return `<div class="row sp" style="margin-bottom:10px"><h1 style="margin:0">${f===hoy()?'Hoy':fechaLinda(f)}</h1>
     <span class="row" style="gap:4px">${f!==hoy()?`<button class="chico" onclick="diaDieta=null;agregarEn='';pintar()">Ir a hoy</button>`:''}<span class="racha" title="Días seguidos cargando comidas">🔥<b>${rc}</b></span></span></div>
   <div class="card semana"><button class="x" onclick="diaDieta=sumarDias('${lun}',-7);agregarEn='';pintar()" aria-label="Semana anterior">‹</button>
-    ${sem.map((x,i)=>`<button class="dia${x===f?' on':''}" onclick="diaDieta='${x}';agregarEn='';pintar()" ${x>hoy()?'disabled':''}><span class="${x===hoy()?'hoyl':''}">${LET[i]}</span>${anillo(x,x===f)}</button>`).join('')}
+    ${sem.map((x,i)=>`<button class="dia${x===f?' on':''}" onclick="diaDieta='${x}';agregarEn='';pintar()" ${x>hoy()&&!planActivo(x)?'disabled':''}><span class="${x===hoy()?'hoyl':''}">${LET[i]}</span>${anillo(x,x===f)}</button>`).join('')}
     <button class="x" onclick="diaDieta=sumarDias('${lun}',7)>hoy()?null:sumarDias('${lun}',7);agregarEn='';pintar()" aria-label="Semana siguiente">›</button></div>
-  ${htmlCalMacros(t)}
+  ${htmlCalMacros(t,false,tp)}
   ${htmlAgua(f)}
-  ${htmlNutri(f)}
   <h2 style="margin:16px 2px 8px">Comidas</h2>
-  ${MOMENTOS.map(([k,n,ic])=>{const g=grupos[k]||[],tk=totales(g);return `<div class="card momento">
-    <div class="row sp" style="flex-wrap:nowrap"><span style="flex:1;min-width:0"><b>${ic} ${n}</b>${g.length?`<div class="mu">${fmt(tk.kcal)} cal · P ${fmt(tk.p)} g</div>`:''}</span>
+  ${MOMENTOS.map(([k,n,ic])=>{const g=grupos[k]||[],tk=totales(g),fz=fan.filter(x=>x.m===k),tz=totales(fz);return `<div class="card momento">
+    <div class="row sp" style="flex-wrap:nowrap"><span style="flex:1;min-width:0"><b>${ic} ${n}</b>${g.length?`<div class="mu">${fmt(tk.kcal)} cal · P ${fmt(tk.p)} g</div>`:fz.length?`<div class="mu fantasma">plan: ${fmt(tz.kcal)} cal · P ${fmt(tz.p)} g</div>`:''}</span>
       <button class="chico ${agregarEn===k?'':'agr'}" onclick="agregarEn=agregarEn==='${k}'?'':'${k}';pintar()">${agregarEn===k?'Cerrar':'+ Agregar'}</button></div>
+    ${fz.length?`<div class="lista">${fz.map(x=>`<div><span class="gr fantasma">${esc(x.n)}<span class="plantag">plan</span><br><span class="mu">${fmt(num(x.kcal))} cal · P ${fmt(num(x.p))} · C ${fmt(num(x.c))} · G ${fmt(num(x.g))}</span></span><button class="chico" style="min-height:44px" onclick="comerPlan('${f}',${x.i})" aria-label="Comí esto">✓</button></div>`).join('')}</div>
+      ${fz.length>1?`<button class="chico" style="width:100%;margin-top:6px;min-height:44px" onclick="comerPlan('${f}','${k}')">✓ Comí todo esto</button>`:''}`:''}
     ${g.length?`<div class="lista">${g.map(c=>`<div><span class="gr">${esc(nombreComida(c))}<br><span class="mu">${fmt(num(c.kcal))} cal · P ${fmt(num(c.p))} · C ${fmt(num(c.c))} · G ${fmt(num(c.g))}</span></span><button class="x" onclick="borrar('comidas/${c.id}','¿Borrar ${esc(nombreComida(c)).replace(/'/g,'')}?')" aria-label="Borrar">✕</button></div>`).join('')}</div>`:''}
     ${agregarEn===k?`<div style="margin-top:10px">
       ${fr.length?`<div class="mu" style="margin-bottom:6px">Con un toque</div><div class="row" style="margin-bottom:10px">${fr.map(c=>`<button class="chip" onclick="repetirComida('${c.id}','${k}')">${esc(nombreComida(c))}</button>`).join('')}</div>`:''}
@@ -598,7 +625,8 @@ function pDieta(){
         <div><label for="c-g">Grasas (g)</label><input id="c-g" inputmode="decimal"></div>
       </div>
       <button class="pri" style="width:100%;margin-top:10px" onclick="agregarComida('${k}')">Guardar en ${n}</button></div>`:''}
-  </div>`;}).join('')}`;
+  </div>`;}).join('')}`
+  ${htmlNutri(f)}`;
 }
 function agregarComida(m){
   const n=$('c-n').value.trim();if(!n){toast('Poné qué comiste','err');return;}

@@ -4,12 +4,13 @@
 Necesita la llave de la base: un secreto de la nube para el sitio de la base (lo agrega solo) o la variable FIREBASE_SECRET (en el entorno de la nube,
 NUNCA en el repositorio). Los datos que se cargan tampoco van al repositorio: se escriben en /tmp.
 
-  python3 tools/fisico.py leer comidas --desde 2026-10-01     # también: peso, entrenos, rutinas, config, fotos, agua
+  python3 tools/fisico.py leer comidas --desde 2026-10-01     # también: peso, entrenos, rutinas, config, fotos, agua, plan
   python3 tools/fisico.py cargar /tmp/carga.json              # mismo formato que Ajustes → Cargar datos de la app
   python3 tools/fisico.py foto /tmp/foto.jpg --fecha 2026-10-31 --nota "de frente"   # necesita Pillow
 
 Formato de carga: {"peso":[...],"comidas":[...],"entrenos":[...],"rutinas":[...],"config":{...},"agua":{"2026-10-31":1500},"borrar":["comidas/ID"]}
 "agua" pone el TOTAL de mililitros de ese día (no suma).
+"plan": {"desde":"AAAA-MM-DD","items":[{"m":"desayuno","n":...,"kcal":..,"p":..,"c":..,"g":..,"mi":{...}}]} reemplaza la dieta predeterminada.
 Con "id" pisa ese registro; sin "id" agrega uno nuevo. "config" se mezcla con lo que hay.
 """
 import base64, io, json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
@@ -77,6 +78,8 @@ def cargar(d):
             pedir("PUT", "agua/" + f, ml or None) if ml else pedir("DELETE", "agua/" + f); n += 1
         else:
             malos.append("agua: " + str(f))
+    if isinstance(d.get("plan"), dict):
+        pedir("PUT", "plan", d["plan"]); n += 1
     if isinstance(d.get("config"), dict):
         pedir("PATCH", "config", d["config"]); n += 1
     for r in d.get("borrar") or []:
