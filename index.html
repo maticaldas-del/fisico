@@ -157,20 +157,22 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 </div>
 <div id="toast"></div>
 <div id="visor">
-  <div class="row sp" style="padding:10px 12px"><span id="v-txt" class="mu"></span><button class="x" style="font-size:1.6rem;color:#fff" onclick="cerrarVisor()" aria-label="Cerrar">✕</button></div>
+  <div class="row sp" style="padding:calc(10px + env(safe-area-inset-top)) 12px 10px;flex-wrap:nowrap"><span id="v-txt" class="mu" style="min-width:0"></span><button class="pri" style="flex:none" onclick="cerrarVisor()" aria-label="Cerrar">✕ Cerrar</button></div>
   <img id="v-img" alt="">
   <div class="row sp" style="padding:10px 12px calc(10px + env(safe-area-inset-bottom))">
-    <button onclick="moverVisor(-1)">‹ Anterior</button>
-    <button class="peligro chico" onclick="borrarFoto()">Borrar</button>
-    <button onclick="moverVisor(1)">Siguiente ›</button>
+    <button onclick="moverVisor(-1)" aria-label="Foto anterior">‹</button>
+    <button class="peligro chico" style="min-height:44px" onclick="borrarFoto()">Borrar</button>
+    <button class="pri" onclick="cerrarVisor()">Cerrar</button>
+    <button onclick="moverVisor(1)" aria-label="Foto siguiente">›</button>
   </div>
 </div>
 <script>
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.13';
+const APP_VERSION='1.14';
 const APP_CAMBIOS=[
+  {v:'1.14',f:'01/11',h:'16:15',c:[{n:2,t:'Arreglado: al abrir una foto no se podía salir en el iPhone (la cruz quedaba tapada por la hora). Ahora hay un botón verde "Cerrar" arriba y otro abajo, y también sale con el gesto de volver.'}]},
   {v:'1.13',f:'01/11',h:'11:10',c:[{n:1,t:'El botón + Vaso del agua suma 300 ml (contando para abajo), y el − saca lo mismo.'}]},
   {v:'1.12',f:'01/11',h:'01:50',c:[{n:2,t:'La app usa siempre la hora de Argentina y el día cambia a la medianoche, como el reloj. La cena que comés entre las 0 y las 4 h se guarda sola en el día anterior.'}]},
   {v:'1.11',f:'01/11',h:'01:40',c:[{n:1,t:'La app siempre arranca en el día de hoy: al abrirla, al volver después de 5 minutos y cuando cambia el día (a las 4 de la mañana).'}]},
@@ -715,8 +717,12 @@ async function subirFotos(archivos){
   est.textContent=hechas?'✓ '+hechas+' foto'+(hechas===1?'':'s')+' guardada'+(hechas===1?'':'s'):'';
   pintarMiniaturas();
 }
-function abrirVisor(i){visorI=i;$('visor').style.display='flex';mostrarVisor();}
-function cerrarVisor(){$('visor').style.display='none';}
+// El visor de fotos se cierra con "Cerrar" (arriba y abajo), con el gesto o botón de volver del teléfono, o con Escape en la PC.
+function abrirVisor(i){visorI=i;$('visor').style.display='flex';mostrarVisor();try{history.pushState({visor:1},'');}catch(_){}}
+function visorAbierto(){return $('visor').style.display==='flex';}
+function cerrarVisor(desdeAtras){if(!visorAbierto())return;$('visor').style.display='none';if(!desdeAtras&&history.state&&history.state.visor)try{history.back();}catch(_){}}
+window.addEventListener('popstate',()=>{if(visorAbierto())cerrarVisor(true);});
+document.addEventListener('keydown',e=>{if(!visorAbierto())return;if(e.key==='Escape')cerrarVisor();else if(e.key==='ArrowLeft')moverVisor(-1);else if(e.key==='ArrowRight')moverVisor(1);});
 function moverVisor(d){if(!fotosVis.length)return;visorI=(visorI+d+fotosVis.length)%fotosVis.length;mostrarVisor();}
 function mostrarVisor(){
   const x=fotosVis[visorI];if(!x)return cerrarVisor();
