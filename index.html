@@ -108,6 +108,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .nut.hecho .nn{text-decoration:line-through;text-decoration-color:var(--accent);color:var(--accent)}
 .nut.hecho .nv{text-decoration:line-through}
 .nut.pasado .nn{color:var(--red)}
+.detdia{margin-top:12px;border-top:1px solid var(--border);padding-top:6px;cursor:default}
+.detm{padding:8px 0;border-bottom:1px solid var(--border)}
+.deti{padding:6px 0 2px 10px}
 .tanque{position:relative;height:120px;border-radius:14px;overflow:hidden;background:#0b1622;border:1px solid #1e3a5f;margin-top:8px}
 .tanque .nivel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#38bdf8,#0369a1);transition:height 1s cubic-bezier(.3,1.4,.5,1)}
 .tanque .ola{position:absolute;left:0;right:0;top:-13px;height:14px;background-repeat:repeat-x;background-size:120px 14px;
@@ -182,8 +185,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.17';
+const APP_VERSION='1.18';
 const APP_CAMBIOS=[
+  {v:'1.18',f:'01/11',h:'23:45',c:[{n:2,t:'Tocando el cuadro de Calorías (o el de carbos, grasas y proteínas) se despliega todo lo que comiste ese día, por comida, con las calorías y macros de cada cosa y qué parte del total es. Se vuelve a tocar para cerrarlo.'}]},
   {v:'1.17',f:'01/11',h:'21:15',c:[{n:2,t:'Menos botones abajo: Inicio y Dieta mostraban lo mismo, así que quedó sólo Dieta (arranca ahí) con tu peso arriba de todo. La lista de cambios de la app está en Ajustes.'}]},
   {v:'1.16',f:'01/11',h:'16:45',c:[{n:3,t:'Pantalla Peso nueva, como la que usabas: elegís la medida (peso, cintura, pecho, brazo, pierna, % grasa) y el período (1 mes a todo), ves Inicial / Actual / Cambio con %, un gráfico grande y la lista de entradas con la foto de ese día. El + de arriba agrega peso, medidas y foto.'}]},
   {v:'1.15',f:'01/11',h:'16:25',c:[{n:1,t:'Saqué el entreno del inicio: está en su pantalla, Entreno.'}]},
@@ -661,15 +665,29 @@ function sumarAgua(f,ml){
   if(ml>0&&antes<metaAgua()&&v>=metaAgua())toast('💧 ¡Llegaste a la meta de agua!','ok',3500);
   else toast(ml>0?'+'+ml+' ml':'−'+(-ml)+' ml');
 }
-function htmlCalMacros(t,click,tp){
+// Tocando Calorías (o los macros) se abre la lista de lo que comió ese día, por comida, con cuánto aporta cada cosa.
+let verDetalleDia=false;
+function htmlDetalleDia(f){
+  const cs=comidasDe(f),t=totales(cs);
+  if(!cs.length)return '<div class="mu" style="margin-top:10px">Todavía no cargaste nada este día.</div>';
+  return `<div class="detdia">${MOMENTOS.map(([k,n,ic])=>{const g=cs.filter(c=>momentoDe(c)===k);if(!g.length)return '';const tk=totales(g);
+    return `<div class="detm"><div class="row sp"><b>${ic} ${n}</b><span class="mu">${fmt(tk.kcal)} cal · P ${fmt(tk.p)} g</span></div>
+      ${g.map(c=>{const pc=t.kcal?Math.round((num(c.kcal)||0)/t.kcal*100):0;return `<div class="deti"><div class="row sp" style="flex-wrap:nowrap;gap:8px;align-items:flex-start"><span style="flex:1;min-width:0">${esc(nombreComida(c))}</span><b style="white-space:nowrap;flex:none">${fmt(num(c.kcal))} cal</b></div>
+        <div class="row sp" style="flex-wrap:nowrap"><span class="mu" style="font-size:.78rem">P ${fmt(num(c.p))} · C ${fmt(num(c.c))} · G ${fmt(num(c.g))}</span><span class="mu" style="font-size:.78rem">${pc}%</span></div>
+        <div class="bar" style="height:4px;margin-top:3px"><i style="width:${pc}%"></i></div></div>`;}).join('')}</div>`;}).join('')}
+    <div class="row sp" style="padding-top:8px;gap:4px"><b>Total</b><b style="font-size:.92rem">${fmt(t.kcal)} cal · P ${fmt(t.p)} · C ${fmt(t.c)} · G ${fmt(t.g)}</b></div></div>`;
+}
+function htmlCalMacros(t,click,tp,f){
   tp=tp||t;const hayPlan=tp.kcal!==t.kcal||tp.p!==t.p;
-  const mk=meta('kcal'),resta=mk?mk-t.kcal:null,cl=click?` onclick="ir('dieta')" style="cursor:pointer"`:'';
+  const mk=meta('kcal'),resta=mk?mk-t.kcal:null;
+  const cl=` onclick="if(event.target.closest('.detdia'))return;verDetalleDia=!verDetalleDia;pintar()" style="cursor:pointer"`;
   const MAC=[['c','Carbos','var(--amber)'],['g','Grasas','#c084fc'],['p','Proteínas','var(--blue)']];
-  return `<div class="card"${cl}><div class="mu">Calorías</div>
+  return `<div class="card"${cl}><div class="row sp"><span class="mu">Calorías</span><span class="mu" style="font-size:.8rem">${verDetalleDia?'ocultar ▲':'ver qué comí ▼'}</span></div>
     <div class="row sp" style="align-items:baseline"><span><span class="big">${fmt(t.kcal)}</span> <span class="mu">cal${mk?' / '+fmt(mk):''}</span></span>
     ${resta!=null?`<span><b style="font-size:1.3rem;color:${resta<0?'var(--amber)':'var(--text)'}">${fmt(Math.abs(resta))}</b> <span class="mu">${resta<0?'de más':'restan'}</span></span>`:''}</div>
     ${barra2(t.kcal,tp.kcal,mk,mk&&t.kcal>mk*1.1?'var(--amber)':'')}
-    ${hayPlan?`<div class="mu fantasma" style="margin-top:6px;opacity:.75">Con el plan del día terminarías en ≈ ${fmt(tp.kcal)} cal · P ${fmt(tp.p)} · C ${fmt(tp.c)} · G ${fmt(tp.g)}</div>`:''}</div>
+    ${hayPlan?`<div class="mu fantasma" style="margin-top:6px;opacity:.75">Con el plan del día terminarías en ≈ ${fmt(tp.kcal)} cal · P ${fmt(tp.p)} · C ${fmt(tp.c)} · G ${fmt(tp.g)}</div>`:''}
+    ${verDetalleDia&&f?htmlDetalleDia(f):''}</div>
   <div class="card macros"${cl}>${MAC.map(([k,n,col])=>{const m=meta(k);return `<div><div class="mu">${n}</div><div style="white-space:nowrap"><b style="font-size:1.1rem">${fmt(t[k])} g</b>${m?` <span class="mu" style="font-size:.78rem">/ ${fmt(m)}</span>`:''}</div>${barra2(t[k],tp[k],m,col)}</div>`;}).join('')}</div>`;
 }
 // Encabezado con el día elegido y la semana (lo usan Inicio y Dieta: el día elegido es el mismo en las dos).
@@ -692,7 +710,7 @@ function pDieta(){
   return `${htmlSemana(f)}
   <div class="card row sp" onclick="ir('peso')" style="cursor:pointer;flex-wrap:nowrap;padding:10px 14px"><span class="mu">⚖️ Peso${u&&u.f!==f?' ('+fechaLinda(u.f)+')':''}</span>
     <span><b style="font-size:1.25rem">${u?fmtKg(u.kg)+' kg':'–'}</b>${dif!=null?` <span style="color:${dif<=0?'var(--accent)':'var(--amber)'}">${dif<=0?'▼':'▲'} ${fmtKg(Math.abs(dif))}</span>`:''}</span></div>
-  ${htmlCalMacros(t,false,tp)}
+  ${htmlCalMacros(t,false,tp,f)}
   ${htmlAgua(f)}
   <h2 style="margin:16px 2px 8px">Comidas</h2>
   ${MOMENTOS.map(([k,n,ic])=>{const g=grupos[k]||[],tk=totales(g),fz=fan.filter(x=>x.m===k),tz=totales(fz);return `<div class="card momento">
