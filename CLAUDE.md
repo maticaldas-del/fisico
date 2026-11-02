@@ -93,7 +93,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
   es del día que termina: al cargarla (aunque sea entre las 0 y las 4 h) va con la fecha del día anterior. La app hace lo mismo sola.
 - 01/11/2026: SIEMPRE hora de Argentina (UTC−3) y el día cambia normal a las 00:00 (la app usa la hora argentina aunque el aparato tenga otra).
 - 01/11/2026: no le gustan: banana con el café (con el café quiere algo para masticar: barra o galletitas), aceite de oliva, atún al natural, yogur.
-- 01/11/2026: café, té, mate y demás bebidas sin alcohol cuentan como agua: al cargarlos, Claude suma su volumen al agua del día. Medidas de Matías: un café = 350 ml, un té = 350 ml, un vaso de agua = 300 ml (01/11: "así tiramos para abajo").
+- 01/11/2026: café, té, mate y demás bebidas sin alcohol cuentan como agua: al cargarlos, Claude suma su volumen al agua del día. Medidas de Matías: un café = 350 ml, un té = 350 ml, un vaso de agua = 250 ml (02/11).
 - 01/11/2026: lo que come seguido (datos de etiqueta): barra Integra Proteica = 150 kcal, P 15, C 13, G 4,5, fibra 8 g, sodio 110 mg
   (la de maní y chocolate 45 g: 154 kcal, P 15, C 12, G 5,1, fibra 8, sodio 121, sat 1,7). Leche La Serenísima entera 3 %.
   Tostaditas de salvado con sésamo: 4 u = 30 g = 110 kcal, P 3,6, C 20, G 1,7, fibra 2,6, sodio 85.

@@ -185,8 +185,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.18';
+const APP_VERSION='1.19';
 const APP_CAMBIOS=[
+  {v:'1.19',f:'02/11',h:'14:05',c:[{n:1,t:'El botón + Vaso del agua suma 250 ml, y el − saca lo mismo.'}]},
   {v:'1.18',f:'01/11',h:'23:45',c:[{n:2,t:'Tocando el cuadro de Calorías (o el de carbos, grasas y proteínas) se despliega todo lo que comiste ese día, por comida, con las calorías y macros de cada cosa y qué parte del total es. Se vuelve a tocar para cerrarlo.'}]},
   {v:'1.17',f:'01/11',h:'21:15',c:[{n:2,t:'Menos botones abajo: Inicio y Dieta mostraban lo mismo, así que quedó sólo Dieta (arranca ahí) con tu peso arriba de todo. La lista de cambios de la app está en Ajustes.'}]},
   {v:'1.16',f:'01/11',h:'16:45',c:[{n:3,t:'Pantalla Peso nueva, como la que usabas: elegís la medida (peso, cintura, pecho, brazo, pierna, % grasa) y el período (1 mes a todo), ves Inicial / Actual / Cambio con %, un gráfico grande y la lista de entradas con la foto de ese día. El + de arriba agrega peso, medidas y foto.'}]},
@@ -654,9 +655,9 @@ function htmlAgua(f){
       <div class="txt">${litros(ml)} L<small>de ${litros(m)} L</small></div>
     </div>
     <div class="row" style="margin-top:10px;flex-wrap:nowrap">
-      <button style="flex:1" onclick="sumarAgua('${f}',300)">+ Vaso<br><span class="mu">300 ml</span></button>
+      <button style="flex:1" onclick="sumarAgua('${f}',250)">+ Vaso<br><span class="mu">250 ml</span></button>
       <button style="flex:1" onclick="sumarAgua('${f}',500)">+ Botella<br><span class="mu">500 ml</span></button>
-      <button style="min-width:56px;font-size:1.4rem" onclick="sumarAgua('${f}',-300)" aria-label="Sacar 300 ml">−</button>
+      <button style="min-width:56px;font-size:1.4rem" onclick="sumarAgua('${f}',-250)" aria-label="Sacar 250 ml">−</button>
     </div></div>`;
 }
 function sumarAgua(f,ml){
