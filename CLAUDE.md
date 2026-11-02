@@ -73,7 +73,8 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 (Si algún día se usa la variable `FIREBASE_SECRET`, el script también la toma.)
 - Leer: `python3 tools/fisico.py leer comidas --desde 2026-10-01` (también `peso`, `entrenos`, `rutinas`, `config`, `fotos`, `agua`).
 - Cargar: escribir el bloque (mismo formato de arriba) en `/tmp/carga.json` —nunca dentro del repo, que es público— y
-  `python3 tools/fisico.py cargar /tmp/carga.json`. Después releer con `leer` para confirmar.
+  `python3 tools/fisico.py cargar /tmp/carga.json`. Después releer con `leer` para confirmar. Borrar /tmp/carga.json después de cargar
+  (01/11 un armado que falló dejó el archivo viejo y se cargó repetido).
 - Foto que manda por el chat, si queda como archivo: `python3 tools/fisico.py foto /tmp/foto.jpg --fecha 2026-10-31 --nota "de frente"`
   (necesita Pillow: `pip install pillow`). Si la foto no queda como archivo, decirle que la suba él desde la pantalla Fotos.
 - Si falla por red: el entorno de la nube tiene que dejar salir a `fisico-e6489-default-rtdb.firebaseio.com`.
@@ -93,6 +94,9 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 - 01/11/2026: SIEMPRE hora de Argentina (UTC−3) y el día cambia normal a las 00:00 (la app usa la hora argentina aunque el aparato tenga otra).
 - 01/11/2026: no le gustan: banana con el café (con el café quiere algo para masticar: barra o galletitas), aceite de oliva, atún al natural, yogur.
 - 01/11/2026: café, té, mate y demás bebidas sin alcohol cuentan como agua: al cargarlos, Claude suma su volumen al agua del día. Medidas de Matías: un café = 350 ml, un té = 350 ml, un vaso de agua = 300 ml (01/11: "así tiramos para abajo").
+- 01/11/2026: lo que come seguido (datos de etiqueta): barra Integra Proteica = 150 kcal, P 15, C 13, G 4,5, fibra 8 g, sodio 110 mg
+  (la de maní y chocolate 45 g: 154 kcal, P 15, C 12, G 5,1, fibra 8, sodio 121, sat 1,7). Leche La Serenísima entera 3 %.
+  Tostaditas de salvado con sésamo: 4 u = 30 g = 110 kcal, P 3,6, C 20, G 1,7, fibra 2,6, sodio 85.
 - 31/10/2026: la app la usa SÓLO él. Nadie puede crearse una cuenta solo (Firebase → Authentication → Configuración → Acciones del
   usuario: "Habilitar la creación" y "Habilitar la eliminación" apagados). Un usuario nuevo se agrega sólo desde la consola de Firebase
   y sólo con su permiso; además las reglas de la base dejan entrar únicamente a su UID (yGnUEddKRxWUZCJKrkmpbxrzrXG2).
