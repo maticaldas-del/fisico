@@ -155,10 +155,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 </div></div>
 <div class="wrap" id="app"><div id="cargando">Cargando…</div></div>
 <nav id="nav" style="display:none">
-  <button data-p="inicio" onclick="ir('inicio')"><span>🏠</span>Inicio</button>
+  <button data-p="dieta" onclick="ir('dieta')"><span>🍽️</span>Dieta</button>
   <button data-p="peso" onclick="ir('peso')"><span>⚖️</span>Peso</button>
   <button data-p="entreno" onclick="ir('entreno')"><span>🏋️</span>Entreno</button>
-  <button data-p="dieta" onclick="ir('dieta')"><span>🍽️</span>Dieta</button>
   <button data-p="fotos" onclick="ir('fotos')"><span>📸</span>Fotos</button>
   <button data-p="ajustes" onclick="ir('ajustes')"><span>⚙️</span>Ajustes</button>
 </nav>
@@ -183,8 +182,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.16';
+const APP_VERSION='1.17';
 const APP_CAMBIOS=[
+  {v:'1.17',f:'01/11',h:'21:15',c:[{n:2,t:'Menos botones abajo: Inicio y Dieta mostraban lo mismo, así que quedó sólo Dieta (arranca ahí) con tu peso arriba de todo. La lista de cambios de la app está en Ajustes.'}]},
   {v:'1.16',f:'01/11',h:'16:45',c:[{n:3,t:'Pantalla Peso nueva, como la que usabas: elegís la medida (peso, cintura, pecho, brazo, pierna, % grasa) y el período (1 mes a todo), ves Inicial / Actual / Cambio con %, un gráfico grande y la lista de entradas con la foto de ese día. El + de arriba agrega peso, medidas y foto.'}]},
   {v:'1.15',f:'01/11',h:'16:25',c:[{n:1,t:'Saqué el entreno del inicio: está en su pantalla, Entreno.'}]},
   {v:'1.14',f:'01/11',h:'16:15',c:[{n:2,t:'Arreglado: al abrir una foto no se podía salir en el iPhone (la cruz quedaba tapada por la hora). Ahora hay un botón verde "Cerrar" arriba y otro abajo, y también sale con el gesto de volver.'}]},
@@ -220,7 +220,8 @@ const RAIZ='fisico';
 const RAMAS=['peso','entrenos','rutinas','comidas','config','fotos','agua','plan'];
 const CACHE_KEY='fisico_cache_v1',COLA_KEY='fisico_cola_v1';
 
-let db=null,usuario=null,pagina='inicio';
+// 01/11: Inicio y Dieta mostraban lo mismo: quedó sólo Dieta (es la pantalla de arranque) con el peso arriba.
+let db=null,usuario=null,pagina='dieta';
 let S={peso:{},entrenos:{},rutinas:{},comidas:{},config:{},fotos:{}};
 // Al abrir la app, al volver a ella después de 5 minutos o cuando cambia el día (4 de la mañana), siempre vuelve a HOY.
 let _ocultaDesde=0,_hoyVisto=null;
@@ -286,10 +287,11 @@ function leerCache(){try{const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'nu
 let _pintarT=null,_pendiente=false;
 function pintarPronto(){clearTimeout(_pintarT);_pintarT=setTimeout(pintar,40);}
 function pintar(){
+  if(pagina==='inicio'||!pagina)pagina='dieta';
   if(editando()){_pendiente=true;return;}
   _pendiente=false;
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===pagina));
-  const f={inicio:pInicio,peso:pPeso,entreno:pEntreno,dieta:pDieta,fotos:pFotos,ajustes:pAjustes}[pagina]||pInicio;
+  const f={peso:pPeso,entreno:pEntreno,dieta:pDieta,fotos:pFotos,ajustes:pAjustes}[pagina]||pDieta;
   $('app').innerHTML=f();
   if(pagina==='fotos')pintarMiniaturas();
 }
@@ -358,22 +360,6 @@ function mejor(series){let b=null;for(const s of series||[]){const kg=num(s.kg)|
 const txtSeries=ss=>(ss||[]).map(s=>(s.r||0)+'×'+(num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso')).join(' · ');
 
 // ── INICIO ──
-function pInicio(){
-  const f=diaDieta||hoy(),esHoy=f===hoy();
-  const ps=pesosOrd().filter(p=>p.f<=f),u=ps[ps.length-1],ant=ps[ps.length-2];
-  const dif=u&&ant?u.kg-ant.kg:null;
-  const cs=comidasDe(f),t=totales(cs);
-  // 01/11: el entreno no va en el inicio (está en su pantalla).
-  const r=resumenMi(f);
-  return `${htmlSemana(f)}
-  <div class="card" onclick="ir('peso')" style="cursor:pointer"><div class="mu">Peso${u&&u.f!==f?' (último, '+fechaLinda(u.f)+')':esHoy?' de hoy':' de ese día'}</div>
-    <div class="big">${u?fmtKg(u.kg)+' kg':'–'} ${dif!=null?`<span style="font-size:.95rem;color:${dif<=0?'var(--accent)':'var(--amber)'}">${dif<=0?'▼':'▲'} ${fmtKg(Math.abs(dif))}</span>`:''}</div>
-    ${meta('pesoMeta')&&u?`<div class="mu">Meta ${fmtKg(meta('pesoMeta'))} kg · faltan ${fmtKg(Math.abs(u.kg-meta('pesoMeta')))} kg</div>`:''}</div>
-  ${htmlCalMacros(t,true,totales(cs.concat(fantasmas(f))))}
-  <div class="card row sp" onclick="ir('dieta')" style="cursor:pointer;flex-wrap:nowrap"><span>🧪 Vitaminas y minerales</span><b>${r.ok} de ${r.tot} ✓</b></div>
-  ${htmlAgua(f)}
-  ${esHoy?htmlCambios():''}`;
-}
 function htmlCambios(max=10){
   const items=[];for(const x of APP_CAMBIOS)for(const c of x.c)if(items.length<max)items.push({v:x.v,f:x.f,h:x.h,n:c.n,t:c.t});
   const u=APP_CAMBIOS[0];
@@ -702,7 +688,10 @@ function pDieta(){
   // Semana (lunes a domingo) del día elegido
   const grupos={};for(const c of cs)(grupos[momentoDe(c)]=grupos[momentoDe(c)]||[]).push(c);
   const fr=frecuentes();
+  const ps=pesosOrd().filter(p=>p.f<=f),u=ps[ps.length-1],ant=ps[ps.length-2],dif=u&&ant?u.kg-ant.kg:null;
   return `${htmlSemana(f)}
+  <div class="card row sp" onclick="ir('peso')" style="cursor:pointer;flex-wrap:nowrap;padding:10px 14px"><span class="mu">⚖️ Peso${u&&u.f!==f?' ('+fechaLinda(u.f)+')':''}</span>
+    <span><b style="font-size:1.25rem">${u?fmtKg(u.kg)+' kg':'–'}</b>${dif!=null?` <span style="color:${dif<=0?'var(--accent)':'var(--amber)'}">${dif<=0?'▼':'▲'} ${fmtKg(Math.abs(dif))}</span>`:''}</span></div>
   ${htmlCalMacros(t,false,tp)}
   ${htmlAgua(f)}
   <h2 style="margin:16px 2px 8px">Comidas</h2>
