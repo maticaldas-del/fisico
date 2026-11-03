@@ -97,7 +97,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 - 01/11/2026: lo que come seguido (datos de etiqueta): barra Integra Proteica = 150 kcal, P 15, C 13, G 4,5, fibra 8 g, sodio 110 mg
   (la de maní y chocolate 45 g: 154 kcal, P 15, C 12, G 5,1, fibra 8, sodio 121, sat 1,7). Leche La Serenísima entera 3 %.
   Tostaditas de salvado con sésamo: 4 u = 30 g = 110 kcal, P 3,6, C 20, G 1,7, fibra 2,6, sodio 85.
-- 02/11/2026: trabaja de 12:30 a 20:30 y sale muerto; a la mañana no puede: 02/11: decidió ir a SU gimnasio (en casa sin peso "no sirve" para él). Va 3 veces por semana, 1 hora: martes, jueves y sábados. Rutinas Día A, B y C (se van alternando).
+- 02/11/2026: trabaja de 12:30 a 20:30 y sale muerto; a la mañana no puede: 02/11: decidió ir a SU gimnasio (en casa sin peso "no sirve" para él). Va 3 veces por semana, 1 hora: martes, jueves y sábados. 02/11: quiere la MISMA rutina los 3 días: "Full body (martes, jueves y sábados)".
   Tiene: un fierro a la altura de una silla (remo invertido), sillas, el piso. Las sentadillas sin peso lo cansan mucho (3×12 y queda sin fuerza).
   Lleva años entrenando pesado. Sus marcas en el gimnasio: dominadas con 20 kg de lastre, press plano 87 kg (80 + barra de 7), sentadilla 70 kg.
 - 31/10/2026: la app la usa SÓLO él. Nadie puede crearse una cuenta solo (Firebase → Authentication → Configuración → Acciones del
