@@ -85,7 +85,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 - 31/10/2026: se guarda TODO (ejercicios, pesos, series, comidas, medidas, fotos) y se tiene que poder ver después.
 - 01/11/2026: la Dieta se parece a la app que usaba antes (MyFitnessPal): semana con círculos, racha, calorías que restan, carbos/grasas/proteínas lado a lado y comidas por Desayuno/Almuerzo/Merienda/Cena/Colaciones.
 - 01/11/2026: no hay pantalla Inicio (era lo mismo que Dieta): la app arranca en Dieta, con el peso arriba. Botones: Dieta, Peso, Entreno, Fotos, Ajustes. Nada repetido.
-- 01/11/2026: las metas (calorías, proteína, carbohidratos, grasas) las pone Claude con criterio; él corrige si quiere. Objetivo: hipertrofia y definición, 1700 kcal, bajar 0,5-0,7 kg por semana.
+- 01/11/2026: las metas (calorías, proteína, carbohidratos, grasas) las pone Claude con criterio; él corrige si quiere. Objetivo: hipertrofia y definición, bajar 0,5-0,7 kg por semana. 03/11: él eligió 1600 kcal (P 160, C 125, G 50) entrenando pesado; si 2 semanas seguidas pierde fuerza o energía, volver a 1700 los días de gimnasio.
 - 31/10/2026: peso en kilos con un decimal.
 - 31/10/2026: al anotar una serie, la app avisa si superó la última vez (más peso, o el mismo peso con más repeticiones).
 - 31/10/2026: lo que come lo pasa por el chat y lo carga Claude.
