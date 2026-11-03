@@ -185,8 +185,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.19';
+const APP_VERSION='1.20';
 const APP_CAMBIOS=[
+  {v:'1.20',f:'02/11',h:'22:00',c:[{n:2,t:'Gráfico de Peso: ahora muestra el período entero que elegís (por ejemplo el mes completo hasta hoy), con una marquita por cada día y la fecha cada pocos días, sin fechas repetidas.'}]},
   {v:'1.19',f:'02/11',h:'14:05',c:[{n:1,t:'El botón + Vaso del agua suma 250 ml, y el − saca lo mismo.'}]},
   {v:'1.18',f:'01/11',h:'23:45',c:[{n:2,t:'Tocando el cuadro de Calorías (o el de carbos, grasas y proteínas) se despliega todo lo que comiste ese día, por comida, con las calorías y macros de cada cosa y qué parte del total es. Se vuelve a tocar para cerrarlo.'}]},
   {v:'1.17',f:'01/11',h:'21:15',c:[{n:2,t:'Menos botones abajo: Inicio y Dieta mostraban lo mismo, así que quedó sólo Dieta (arranca ahí) con tu peso arriba de todo. La lista de cambios de la app está en Ajustes.'}]},
@@ -415,7 +416,7 @@ function pPeso(){
     <div><b>${act?v1(act.y)+' '+mu:'–'}</b><span>Actual</span></div>
     <div><b style="color:${colDif}">${dif==null?'–':(dif<0?'↘ ':dif>0?'↗ ':'')+v1(Math.abs(dif))+' '+mu}</b><span>Cambio${pct!=null&&dif?` (${dif<0?'−':'+'}${v1(Math.abs(pct))}%)`:''}</span></div>
   </div>
-  <div class="card">${graficoGrande(pts,mu)}</div>
+  <div class="card">${graficoGrande(pts,mu,desde||(pts[0]&&pts[0].f),hoy())}</div>
   <h2 style="margin:16px 2px 8px">Entradas</h2>
   <div class="card entradas">${todos.slice().reverse().slice(0,120).map(p=>{const fs=fotosDelDia(p.f),ft=fs[0];
     const otras=MEDIDAS.filter(([k])=>k!==mk&&num(p[k])!=null).map(([k,n,u])=>n+' '+v1(num(p[k]))+' '+u);
@@ -425,24 +426,35 @@ function pPeso(){
       <button class="x" onclick="borrar('peso/${p.id}','¿Borrar esta entrada del ${fechaLinda(p.f)}?')" aria-label="Borrar">✕</button></div>`;}).join('')||'<div class="mu">Todavía no hay nada cargado. Tocá + para agregar.</div>'}</div>`;
 }
 // Gráfico grande con líneas de referencia y fechas abajo.
-function graficoGrande(pts,unidad){
-  if(pts.length<2)return `<div class="mu" style="padding:30px 0;text-align:center">${pts.length?'Con dos datos o más aparece el gráfico.':'No hay datos en este período.'}</div>`;
-  const W=340,H=190,L=30,R=8,T=10,B=24;
-  const xs=pts.map(p=>new Date(p.f+'T12:00:00').getTime()),ys=pts.map(p=>p.y);
-  let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
-  if(x1===x0)x1=x0+864e5;
+// Gráfico grande: el eje de abajo abarca TODO el período elegido (de 'desde' a 'hasta'), con una marca por día
+// y la fecha cada tantos días, así se ve el mes entero día por día aunque haya pocos pesajes.
+function graficoGrande(pts,unidad,desde,hasta){
+  if(!pts.length)return '<div class="mu" style="padding:30px 0;text-align:center">No hay datos en este período.</div>';
+  const W=340,H=200,L=30,R=10,T=10,B=26,DIA=864e5;
+  const dt=f=>new Date(f+'T12:00:00').getTime();
+  let x0=dt(desde||pts[0].f),x1=dt(hasta||pts[pts.length-1].f);if(x1<=x0)x1=x0+DIA;
+  const dias=Math.round((x1-x0)/DIA);
+  const xs=pts.map(p=>dt(p.f)),ys=pts.map(p=>p.y);
+  let y0=Math.min(...ys),y1=Math.max(...ys);
   const paso=(y1-y0)<=4?1:(y1-y0)<=10?2:(y1-y0)<=25?5:10;
-  y0=Math.floor(y0/paso)*paso-(paso);y1=Math.ceil(y1/paso)*paso+(paso);if(y0<0)y0=0;
+  y0=Math.floor(y0/paso)*paso-paso;y1=Math.ceil(y1/paso)*paso+paso;if(y0<0)y0=0;
   const X=x=>L+(x-x0)/(x1-x0)*(W-L-R),Y=y=>T+(y1-y)/(y1-y0)*(H-T-B);
   let g='';for(let y=y0;y<=y1+1e-9;y+=paso)g+=`<line x1="${L}" y1="${Y(y).toFixed(1)}" x2="${W-R}" y2="${Y(y).toFixed(1)}" stroke="#2a2a30"/><text x="${L-5}" y="${(Y(y)+3).toFixed(1)}" fill="#8a8a99" font-size="9" text-anchor="end">${y}</text>`;
-  const N=5;for(let i=0;i<N;i++){const t=x0+(x1-x0)*i/(N-1),d=new Date(t);g+=`<text x="${X(t).toFixed(1)}" y="${H-6}" fill="#8a8a99" font-size="9" text-anchor="${i===0?'start':i===N-1?'end':'middle'}">${d.getDate()}/${d.getMonth()+1}</text>`;}
+  // Marcas de días (o semanas/meses si el período es largo) y fechas sin repetir.
+  const pasoMarca=dias<=45?1:dias<=120?7:30;
+  const cadaEtiqueta=dias<=8?1:dias<=16?2:dias<=45?5:dias<=120?14:dias<=400?60:120;
+  for(let i=0;i<=dias;i+=pasoMarca){const xx=X(x0+i*DIA).toFixed(1);g+=`<line x1="${xx}" y1="${H-B}" x2="${xx}" y2="${H-B+3}" stroke="#3a3a42"/>`;}
+  const etq=[];for(let i=0;i<=dias;i+=cadaEtiqueta)etq.push(i);
+  if(etq[etq.length-1]!==dias){if(dias-etq[etq.length-1]<cadaEtiqueta*0.6&&etq.length>1)etq.pop();etq.push(dias);}
+  for(const i of etq){const t=x0+i*DIA,xx=X(t).toFixed(1),d=new Date(t);
+    g+=`<line x1="${xx}" y1="${T}" x2="${xx}" y2="${H-B}" stroke="#1f1f24"/><text x="${xx}" y="${H-8}" fill="#8a8a99" font-size="9" text-anchor="${i===0?'start':i===dias?'end':'middle'}">${d.getDate()}/${d.getMonth()+1}</text>`;}
   const d=pts.map((p,i)=>X(xs[i]).toFixed(1)+','+Y(p.y).toFixed(1)).join(' ');
-  const area=`${X(xs[0]).toFixed(1)},${Y(y0)} ${d} ${X(xs[xs.length-1]).toFixed(1)},${Y(y0)}`;
+  const area=pts.length>1?`<polygon points="${X(xs[0]).toFixed(1)},${Y(y0)} ${d} ${X(xs[xs.length-1]).toFixed(1)},${Y(y0)}" fill="url(#ga)"/>`:'';
   return `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de ${unidad}">
     <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4ade80" stop-opacity=".25"/><stop offset="1" stop-color="#4ade80" stop-opacity="0"/></linearGradient></defs>
-    ${g}<polygon points="${area}" fill="url(#ga)"/>
-    <polyline fill="none" stroke="#4ade80" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" points="${d}"/>
-    ${pts.length<=40?pts.map((p,i)=>`<circle cx="${X(xs[i]).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="2.6" fill="#4ade80"/>`).join(''):''}
+    ${g}${area}
+    ${pts.length>1?`<polyline fill="none" stroke="#4ade80" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" points="${d}"/>`:''}
+    ${pts.length<=60?pts.map((p,i)=>`<circle cx="${X(xs[i]).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3" fill="#4ade80"><title>${fechaLinda(p.f)}: ${p.y}</title></circle>`).join(''):''}
     <circle cx="${X(xs[xs.length-1]).toFixed(1)}" cy="${Y(ys[ys.length-1]).toFixed(1)}" r="4.5" fill="#4ade80" stroke="#0f0f11" stroke-width="2"/>
   </svg>`;
 }
