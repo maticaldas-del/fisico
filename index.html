@@ -113,6 +113,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .deti{padding:6px 0 2px 10px}
 .consejo{margin:8px 0 2px;padding:8px 10px;border-radius:8px;font-size:.9rem;background:var(--surface2)}
 .consejo.sube{border-left:3px solid var(--accent)}.consejo.baja{border-left:3px solid var(--amber)}.consejo.igual{border-left:3px solid var(--blue)}
+.hist .hrow{padding:8px 0;border-top:1px solid var(--border)}
+.hs{display:inline-block;margin:2px 8px 0 0;white-space:nowrap}
+.entd{border-top:1px solid var(--border);padding:4px 0}
+.entd summary{display:flex;gap:8px;align-items:center;color:var(--text);min-height:44px}
 .tanque{position:relative;height:120px;border-radius:14px;overflow:hidden;background:#0b1622;border:1px solid #1e3a5f;margin-top:8px}
 .tanque .nivel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#38bdf8,#0369a1);transition:height 1s cubic-bezier(.3,1.4,.5,1)}
 .tanque .ola{position:absolute;left:0;right:0;top:-13px;height:14px;background-repeat:repeat-x;background-size:120px 14px;
@@ -187,8 +191,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.21';
+const APP_VERSION='1.22';
 const APP_CAMBIOS=[
+  {v:'1.22',f:'02/11',h:'22:50',c:[{n:3,t:'Historial completo de entrenos: elegís un ejercicio y ves cada día que lo hiciste con todas las series, el récord, la fuerza estimada y los kilos totales, con gráfico. Abajo, todos los entrenos agrupados por mes; tocando uno se abre con todo el detalle.'}]},
   {v:'1.21',f:'02/11',h:'22:30',c:[{n:3,t:'Entreno: en cada ejercicio la app te dice si hoy toca ⬆️ subir el peso (hiciste el tope del rango en todas las series), ⬇️ bajarlo (dos veces sin llegar al mínimo) o ➡️ mantenerlo y sumar repeticiones, y te pone ese peso. Abajo está la guía "📘 Cómo progresar".'}]},
   {v:'1.20',f:'02/11',h:'22:00',c:[{n:2,t:'Gráfico de Peso: ahora muestra el período entero que elegís (por ejemplo el mes completo hasta hoy), con una marquita por cada día y la fecha cada pocos días, sin fechas repetidas.'}]},
   {v:'1.19',f:'02/11',h:'14:05',c:[{n:1,t:'El botón + Vaso del agua suma 250 ml, y el − saca lo mismo.'}]},
@@ -239,7 +244,7 @@ document.addEventListener('visibilitychange',()=>{
   if(diaDieta&&_ocultaDesde&&Date.now()-_ocultaDesde>5*60e3){diaDieta=null;agregarEn='';pintarPronto();}
 });
 setInterval(()=>{const h=hoy();if(_hoyVisto&&h!==_hoyVisto){diaDieta=null;pintarPronto();}_hoyVisto=h;},60e3);
-let diaDieta=null,rangoPeso=365,ejGraf='';
+let diaDieta=null,rangoPeso=365,ejGraf='',histVer='kg';
 
 // ── AYUDAS ──
 const $=id=>document.getElementById(id);
@@ -531,16 +536,35 @@ function pEntreno(){
     h+=GUIA_PROGRESO;
     if(rs.length)h+=`<details class="card"><summary>Ver las rutinas</summary>${rs.map(r=>`<div style="margin:10px 0"><b>${esc(r.n)}</b><div class="mu">${(r.ejercicios||[]).map(e=>esc(e.n)+(e.series?' '+e.series+'×'+(e.reps||''):'')).join(' · ')}</div></div>`).join('')}</details>`;
   }
-  // Progreso por ejercicio
+  // HISTORIAL: todo lo que hizo, por ejercicio (cada día con todas las series, mejor serie, fuerza estimada y kilos totales)
+  // y la lista completa de entrenos agrupada por mes.
   const nombres=[...new Set(entrenosOrd().flatMap(e=>(e.ej||[]).filter(x=>(x.series||[]).length).map(x=>x.n)))].sort((a,b)=>a.localeCompare(b));
   if(nombres.length){
     if(!ejGraf||!nombres.includes(ejGraf))ejGraf=nombres[0];
-    const pts=entrenosOrd().slice().reverse().map(e=>{const ej=(e.ej||[]).find(x=>normN(x.n)===normN(ejGraf));const b=ej&&mejor(ej.series);return b&&b.kg?{f:e.f,y:b.kg}:null;}).filter(Boolean);
-    h+=`<div class="card"><h2>Progreso</h2><select onchange="ejGraf=this.value;this.blur();pintar()">${nombres.map(n=>`<option ${n===ejGraf?'selected':''}>${esc(n)}</option>`).join('')}</select>
-      <div style="margin-top:8px">${grafico(pts,{unidad:' kg',color:'#60a5fa'})}</div><div class="mu">El peso más alto de cada día.</div></div>`;
+    const ses=entrenosOrd().map(e=>{const ej=(e.ej||[]).find(x=>normN(x.n)===normN(ejGraf));if(!ej||!(ej.series||[]).length)return null;
+      const ss=ej.series,b=mejor(ss),rm=Math.max(...ss.map(s=>(num(s.kg)||0)*(1+(num(s.r)||0)/30))),vol=ss.reduce((t,s)=>t+(num(s.kg)||0)*(num(s.r)||0),0),reps=ss.reduce((t,s)=>t+(num(s.r)||0),0);
+      return {f:e.f,ss,b,rm,vol,reps};}).filter(Boolean);
+    const conPeso=ses.some(x=>x.rm>0);
+    const pts=ses.slice().reverse().map(x=>({f:x.f,y:histVer==='rm'&&conPeso?Math.round(x.rm*10)/10:histVer==='vol'&&conPeso?Math.round(x.vol):conPeso?x.b.kg:x.reps}));
+    const unidad=conPeso?(histVer==='vol'?'kg totales':'kg'):'reps';
+    const rec=ses.reduce((m,x)=>!m||x.rm>m.rm||(!conPeso&&x.reps>m.reps)?x:m,null);
+    h+=`<div class="card"><h2>📈 Historial por ejercicio</h2>
+      <select onchange="ejGraf=this.value;this.blur();pintar()">${nombres.map(n=>`<option ${n===ejGraf?'selected':''}>${esc(n)}</option>`).join('')}</select>
+      ${conPeso?`<div class="row" style="margin-top:8px;gap:6px">${[['kg','Peso más alto'],['rm','Fuerza (1 rep. estimada)'],['vol','Kilos totales']].map(([k,n])=>`<button class="chip ${histVer===k?'on':''}" onclick="histVer='${k}';pintar()">${n}</button>`).join('')}</div>`:''}
+      <div style="margin-top:8px">${graficoGrande(pts,unidad,pts[0]&&pts[0].f,pts.length?pts[pts.length-1].f:hoy())}</div>
+      <div class="mu" style="margin:4px 0 10px">${ses.length} ${ses.length===1?'vez':'veces'}${rec&&conPeso?` · récord: ${fmtKg(rec.b.kg)} kg × ${rec.b.r} (${fechaLinda(rec.f)})`:''}. Fuerza estimada = cuánto levantarías a 1 repetición.</div>
+      <div class="hist">${ses.map((x,i)=>{const ant=ses[i+1],sube=ant&&conPeso&&x.rm>ant.rm+0.01,baja=ant&&conPeso&&x.rm<ant.rm-0.01;
+        return `<div class="hrow"><div class="row sp" style="flex-wrap:nowrap"><b>${fechaLinda(x.f)} <span class="mu" style="font-weight:400">${x.f.slice(0,4)}</span></b>
+          <span class="mu" style="white-space:nowrap">${conPeso?`${fmt(x.vol)} kg tot. · ≈${fmtKg(x.rm)} kg`:x.reps+' reps'} ${sube?'<span style="color:var(--accent)">▲</span>':baja?'<span style="color:var(--amber)">▼</span>':''}</span></div>
+          <div class="mu">${x.ss.map((s,j)=>`<span class="hs">S${j+1}: ${s.r}×${num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso'}</span>`).join('')}</div></div>`;}).join('')}</div></div>`;
   }
-  const hist=entrenosOrd().filter(e=>e.estado!=='en curso').slice(0,15);
-  h+=`<div class="card"><h2>Últimos entrenos</h2><div class="lista">${hist.map(e=>`<div><span class="gr"><b>${fechaLinda(e.f)}</b> · ${esc(e.rutinaN||'Libre')}<br><span class="mu">${(e.ej||[]).filter(x=>(x.series||[]).length).map(x=>esc(x.n)+' '+txtSeries(x.series)).join(' — ')}</span></span><button class="x" onclick="borrar('entrenos/${e.id}','¿Borrar este entreno?')" aria-label="Borrar">✕</button></div>`).join('')||'<div class="mu">Todavía no hay entrenos.</div>'}</div></div>`;
+  const hist=entrenosOrd().filter(e=>e.estado!=='en curso');
+  const porMes={};for(const e of hist){const k=e.f.slice(0,7);(porMes[k]=porMes[k]||[]).push(e);}
+  h+=`<div class="card"><h2>🗓️ Todos los entrenos (${hist.length})</h2>${Object.keys(porMes).map(k=>{const [y,m]=k.split('-');return `<div class="mu" style="margin:12px 0 4px;font-weight:700;text-transform:uppercase;font-size:.75rem">${MESES[+m-1]} ${y} · ${porMes[k].length}</div>
+    ${porMes[k].map(e=>{const ejs=(e.ej||[]).filter(x=>(x.series||[]).length),ns=ejs.reduce((t,x)=>t+x.series.length,0);
+      return `<details class="entd"><summary><span style="flex:1"><b>${fechaLinda(e.f)}</b> · ${esc(e.rutinaN||'Libre')}</span><span class="mu">${ejs.length} ej. · ${ns} series</span></summary>
+        ${ejs.map(x=>`<div style="padding:6px 0 2px"><b style="font-size:.92rem">${esc(x.n)}</b><div class="mu">${x.series.map((s,j)=>`<span class="hs">S${j+1}: ${s.r}×${num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso'}</span>`).join('')}</div></div>`).join('')||'<div class="mu">Sin series anotadas.</div>'}
+        <button class="peligro chico" style="margin-top:8px;min-height:44px" onclick="borrar('entrenos/${e.id}','¿Borrar el entreno del ${fechaLinda(e.f)}?')">Borrar este entreno</button></details>`;}).join('')}`;}).join('')||'<div class="mu">Todavía no hay entrenos.</div>'}</div>`;
   return h;
 }
 function empezarEntreno(rid){
