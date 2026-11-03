@@ -111,6 +111,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .detdia{margin-top:12px;border-top:1px solid var(--border);padding-top:6px;cursor:default}
 .detm{padding:8px 0;border-bottom:1px solid var(--border)}
 .deti{padding:6px 0 2px 10px}
+.consejo{margin:8px 0 2px;padding:8px 10px;border-radius:8px;font-size:.9rem;background:var(--surface2)}
+.consejo.sube{border-left:3px solid var(--accent)}.consejo.baja{border-left:3px solid var(--amber)}.consejo.igual{border-left:3px solid var(--blue)}
 .tanque{position:relative;height:120px;border-radius:14px;overflow:hidden;background:#0b1622;border:1px solid #1e3a5f;margin-top:8px}
 .tanque .nivel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#38bdf8,#0369a1);transition:height 1s cubic-bezier(.3,1.4,.5,1)}
 .tanque .ola{position:absolute;left:0;right:0;top:-13px;height:14px;background-repeat:repeat-x;background-size:120px 14px;
@@ -185,8 +187,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.20';
+const APP_VERSION='1.21';
 const APP_CAMBIOS=[
+  {v:'1.21',f:'02/11',h:'22:30',c:[{n:3,t:'Entreno: en cada ejercicio la app te dice si hoy toca ⬆️ subir el peso (hiciste el tope del rango en todas las series), ⬇️ bajarlo (dos veces sin llegar al mínimo) o ➡️ mantenerlo y sumar repeticiones, y te pone ese peso. Abajo está la guía "📘 Cómo progresar".'}]},
   {v:'1.20',f:'02/11',h:'22:00',c:[{n:2,t:'Gráfico de Peso: ahora muestra el período entero que elegís (por ejemplo el mes completo hasta hoy), con una marquita por cada día y la fecha cada pocos días, sin fechas repetidas.'}]},
   {v:'1.19',f:'02/11',h:'14:05',c:[{n:1,t:'El botón + Vaso del agua suma 250 ml, y el − saca lo mismo.'}]},
   {v:'1.18',f:'01/11',h:'23:45',c:[{n:2,t:'Tocando el cuadro de Calorías (o el de carbos, grasas y proteínas) se despliega todo lo que comiste ese día, por comida, con las calorías y macros de cada cosa y qué parte del total es. Se vuelve a tocar para cerrarlo.'}]},
@@ -354,6 +357,32 @@ function proximaRutina(){
 }
 const normN=t=>String(t||'').trim().toLowerCase();
 // Lo de la última vez de un ejercicio (sin contar el entreno de hoy).
+// ── CÓMO PROGRESAR (doble progresión). Cada ejercicio de la rutina tiene un rango de repeticiones (ej. 4×6-10).
+// ⬆️ Si la última vez hizo el tope del rango en TODAS las series → hoy sube el peso (+2 kg por mancuerna, +2,5 kg barra o lastre).
+// ⬇️ Si las dos últimas veces no llegó al mínimo en la primera serie → baja 5-10 %. ➡️ Si no, mismo peso y sumar repeticiones.
+function rangoDe(plan){const m=String(plan||'').match(/(\d+)\s*×\s*(\d+)\s*-\s*(\d+)/);return m?{series:+m[1],min:+m[2],max:+m[3]}:null;}
+function historialEj(nombre,salvo,n){const out=[];for(const e of entrenosOrd()){if(e.id===salvo||e.estado==='en curso')continue;const ej=(e.ej||[]).find(x=>normN(x.n)===normN(nombre));if(ej&&(ej.series||[]).length){out.push({f:e.f,series:ej.series});if(out.length>=n)break;}}return out;}
+const redondear=(kg,paso)=>Math.round(kg/paso)*paso;
+function consejoEj(ej,salvo){
+  const r=rangoDe(ej.plan),h=historialEj(ej.n,salvo,2);
+  if(!r||!h.length)return null;
+  const u=h[0],kgU=Math.max(...u.series.map(s=>num(s.kg)||0));
+  const mancuerna=/mancuern/i.test(ej.n),paso=mancuerna?2:2.5;
+  const todasArriba=u.series.length>=r.series&&u.series.slice(0,r.series).every(s=>(num(s.r)||0)>=r.max);
+  const debajo=x=>x&&(num(x.series[0].r)||0)<r.min;
+  if(todasArriba&&kgU)return {tipo:'sube',kg:kgU+paso,txt:`⬆️ La última vez hiciste ${r.max} o más en todas las series: hoy subí a ${fmtKg(kgU+paso)} kg${mancuerna?' cada mancuerna':''}.`};
+  if(h.length>=2&&debajo(h[0])&&debajo(h[1])&&kgU){const nuevo=redondear(kgU*0.92,mancuerna?1:2.5);return {tipo:'baja',kg:nuevo,txt:`⬇️ Dos veces seguidas no llegaste a ${r.min}: hoy bajá a ${fmtKg(nuevo)} kg y volvé a subir de a poco.`};}
+  return {tipo:'igual',kg:kgU||null,txt:`➡️ Mismo peso${kgU?' ('+fmtKg(kgU)+' kg)':''}: tratá de sumar repeticiones. Cuando hagas ${r.max} en las ${r.series} series, subís.`};
+}
+const GUIA_PROGRESO=`<details class="card"><summary>📘 Cómo progresar</summary><div style="margin-top:8px;line-height:1.5">
+  <p style="margin:0 0 8px">Cada ejercicio tiene un <b>rango de repeticiones</b> (por ejemplo 4×6-10).</p>
+  <p style="margin:0 0 6px">1. Arrancá con un peso con el que llegues al número de abajo.</p>
+  <p style="margin:0 0 6px">2. Cada entreno, con el mismo peso, tratá de <b>sumar repeticiones</b>.</p>
+  <p style="margin:0 0 6px">3. <b>⬆️ Subí el peso</b> cuando hagas el número de arriba en <b>todas</b> las series: +2 kg cada mancuerna, +2,5 kg en barra o lastre.</p>
+  <p style="margin:0 0 6px">4. <b>⬇️ Bajá un 5 a 10 %</b> si dos entrenos seguidos no llegás al número de abajo.</p>
+  <p style="margin:0 0 6px">5. Las series tienen que ser de verdad: que te queden 1 o 2 repeticiones como mucho. En la última es normal hacer 1 o 2 menos.</p>
+  <p style="margin:0">En definición es normal progresar lento: <b>mantener los pesos mientras bajás de peso ya es ganar</b>. Si 2 semanas seguidas llegás dolorido, movés menos peso o andás muy cansado, avisale a Claude y bajamos series.</p>
+  <p class="mu" style="margin:8px 0 0">La app te dice en cada ejercicio si hoy toca subir, bajar o mantener, y te pone ese peso.</p></div></details>`;
 function ultimaVez(nombre,salvo){
   for(const e of entrenosOrd()){
     if(e.id===salvo)continue;
@@ -477,24 +506,29 @@ function pEntreno(){
   if(enc){
     h+=`<div class="card"><div class="row sp"><h2 style="margin:0">${esc(enc.rutinaN||'Entreno')} · ${fechaLinda(enc.f)}</h2></div></div>`;
     (enc.ej||[]).forEach((ej,i)=>{
-      const uv=ultimaVez(ej.n,enc.id),primera=uv&&uv.series[0];
+      const uv=ultimaVez(ej.n,enc.id),primera=uv&&uv.series[0],cj=consejoEj(ej,enc.id);
+      const hechas=(ej.series||[]).length,ultimaHoy=hechas?ej.series[hechas-1]:null;
+      const kgPre=ultimaHoy&&num(ultimaHoy.kg)?num(ultimaHoy.kg):cj&&cj.kg?cj.kg:primera&&num(primera.kg)?num(primera.kg):null;
       const plan=ej.plan?`<span class="mu"> · plan ${esc(ej.plan)}</span>`:'';
       h+=`<div class="card"><div class="row sp"><b>${esc(ej.n)}</b>${plan}</div>
         <div class="mu">${uv?'La última vez ('+fechaLinda(uv.f)+'): '+txtSeries(uv.series):'Primera vez que lo hacés'}</div>
+        ${cj&&!hechas?`<div class="consejo ${cj.tipo}">${cj.txt}</div>`:''}
         <div>${(ej.series||[]).map((s,j)=>`<span class="serie">${s.r}×${num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso'}<button class="x" onclick="borrarSerie(${i},${j})" aria-label="Borrar serie">✕</button></span>`).join('')}</div>
         <div class="row" style="margin-top:8px">
           <div class="campo"><label for="r-${i}">Repeticiones</label><input id="r-${i}" inputmode="numeric" value="${primera?esc(primera.r):''}"></div>
-          <div class="campo"><label for="k-${i}">Peso (kg)</label><input id="k-${i}" inputmode="decimal" value="${primera&&num(primera.kg)?esc(String(primera.kg).replace('.',',')):''}"></div>
+          <div class="campo"><label for="k-${i}">Peso (kg)</label><input id="k-${i}" inputmode="decimal" value="${kgPre!=null?esc(String(kgPre).replace('.',',')):''}"></div>
           <button class="pri" style="align-self:flex-end" onclick="agregarSerie(${i})">+ Serie</button>
         </div></div>`;
     });
     h+=`<div class="card"><label for="e-nuevo">Agregar otro ejercicio</label><div class="row"><input id="e-nuevo" class="campo" placeholder="Ej: Curl de bíceps"><button onclick="agregarEjercicio()">Agregar</button></div></div>
       <button class="pri" style="width:100%" onclick="terminarEntreno()">Terminar entreno</button>
       <button class="peligro chico" style="width:100%;margin-top:10px" onclick="borrar('entrenos/${enc.id}','¿Descartar el entreno de hoy?')">Descartar</button>`;
+    h+=GUIA_PROGRESO;
   } else {
     h+=`<div class="card"><h2>Empezar</h2>${rs.length?`<div class="row">${rs.map(r=>`<button class="chip ${prox&&prox.id===r.id?'on':''}" onclick="empezarEntreno('${r.id}')">${esc(r.n)}</button>`).join('')}</div>
       ${prox?`<div class="mu" style="margin-top:8px">Te toca: <b>${esc(prox.n)}</b> (la que sigue a la última que hiciste)</div>`:''}`:'<div class="mu">Todavía no hay rutinas: las armamos por el chat.</div>'}
       <button style="margin-top:10px" onclick="empezarEntreno('')">Entreno libre</button></div>`;
+    h+=GUIA_PROGRESO;
     if(rs.length)h+=`<details class="card"><summary>Ver las rutinas</summary>${rs.map(r=>`<div style="margin:10px 0"><b>${esc(r.n)}</b><div class="mu">${(r.ejercicios||[]).map(e=>esc(e.n)+(e.series?' '+e.series+'×'+(e.reps||''):'')).join(' · ')}</div></div>`).join('')}</details>`;
   }
   // Progreso por ejercicio
