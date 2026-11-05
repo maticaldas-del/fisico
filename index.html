@@ -117,6 +117,20 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .hs{display:inline-block;margin:2px 8px 0 0;white-space:nowrap}
 .entd{border-top:1px solid var(--border);padding:4px 0}
 .entd summary{display:flex;gap:8px;align-items:center;color:var(--text);min-height:44px}
+.nivelmini .bar{margin:8px 0}
+.mchips{display:flex;flex-wrap:wrap;gap:4px}
+.mchip{font-size:.75rem;padding:3px 8px;border-radius:999px;background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.mchip.ppal{border-color:#5a4520}
+.mchip.ok{background:#0b2a17;color:var(--accent);border-color:#14532d}
+.nivnum{font-family:Syne,system-ui,sans-serif;font-weight:800;font-size:2.6rem;line-height:1;color:var(--amber)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+.grid3 b{display:block;font-size:1.2rem}.grid3 span{font-size:.72rem;color:var(--muted);text-transform:uppercase}
+.logros{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.logro{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px;text-align:center;opacity:.45;display:flex;flex-direction:column;gap:2px}
+.logro.ok{opacity:1;border-color:var(--amber)}
+.logro .lic{font-size:1.8rem}.logro b{font-size:.8rem}.logro span{font-size:.68rem;color:var(--muted)}
+.xpbars{display:flex;align-items:flex-end;gap:2px;height:80px;margin:6px 0}
+.xpbars i{flex:1;background:var(--accent);border-radius:2px 2px 0 0;min-width:3px}
 .tanque{position:relative;height:120px;border-radius:14px;overflow:hidden;background:#0b1622;border:1px solid #1e3a5f;margin-top:8px}
 .tanque .nivel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#38bdf8,#0369a1);transition:height 1s cubic-bezier(.3,1.4,.5,1)}
 .tanque .ola{position:absolute;left:0;right:0;top:-13px;height:14px;background-repeat:repeat-x;background-size:120px 14px;
@@ -191,8 +205,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.22';
+const APP_VERSION='1.23';
 const APP_CAMBIOS=[
+  {v:'1.23',f:'05/11',h:'00:50',c:[{n:3,t:'Nivel y desafío de 66 días: arriba en Dieta ves el día del desafío, tu nivel, la racha 🔥 y las misiones de hoy (proteína, calorías, entrenar, agua, creatina, pesarte, 4 comidas), que se tachan solas con lo que cargás. Tocándolo: puntos, logros que se desbloquean, antes y después, y puntos por día.'}]},
   {v:'1.22',f:'02/11',h:'22:50',c:[{n:3,t:'Historial completo de entrenos: elegís un ejercicio y ves cada día que lo hiciste con todas las series, el récord, la fuerza estimada y los kilos totales, con gráfico. Abajo, todos los entrenos agrupados por mes; tocando uno se abre con todo el detalle.'}]},
   {v:'1.21',f:'02/11',h:'22:30',c:[{n:3,t:'Entreno: en cada ejercicio la app te dice si hoy toca ⬆️ subir el peso (hiciste el tope del rango en todas las series), ⬇️ bajarlo (dos veces sin llegar al mínimo) o ➡️ mantenerlo y sumar repeticiones, y te pone ese peso. Abajo está la guía "📘 Cómo progresar".'}]},
   {v:'1.20',f:'02/11',h:'22:00',c:[{n:2,t:'Gráfico de Peso: ahora muestra el período entero que elegís (por ejemplo el mes completo hasta hoy), con una marquita por cada día y la fecha cada pocos días, sin fechas repetidas.'}]},
@@ -305,7 +320,7 @@ function pintar(){
   if(editando()){_pendiente=true;return;}
   _pendiente=false;
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===pagina));
-  const f={peso:pPeso,entreno:pEntreno,dieta:pDieta,fotos:pFotos,ajustes:pAjustes}[pagina]||pDieta;
+  const f={peso:pPeso,entreno:pEntreno,dieta:pDieta,fotos:pFotos,ajustes:pAjustes,nivel:pNivel}[pagina]||pDieta;
   $('app').innerHTML=f();
   if(pagina==='fotos')pintarMiniaturas();
 }
@@ -659,7 +674,97 @@ function anillo(f,sel){
   return `<span class="anillo${sel?' sel':''}" style="background:conic-gradient(${col} ${pct}%,var(--border) 0)"><span></span></span>`;
 }
 // Racha: días seguidos con alguna comida cargada (si hoy todavía no hay nada, cuenta desde ayer).
-function racha(){let n=0,f=hoy();if(!comidasDe(f).length)f=sumarDias(f,-1);while(comidasDe(f).length){n++;f=sumarDias(f,-1);}return n;}
+// ── NIVEL: misiones del día, puntos (XP), nivel, racha, logros y desafío de 66 días. Todo sale de los datos (no se tilda a mano).
+// Principales (cortan la racha): proteína ≥ meta, calorías entre 70 % y 103 % de la meta, y entrenar los días que toca.
+const DESAFIO=()=>Object.assign({inicio:'2026-11-05',dias:66},(S.config||{}).desafio||{});
+const DIAS_ENTRENO=()=>(S.config||{}).diasEntreno||[2,4,6]; // martes, jueves, sábado
+const esDiaEntreno=f=>DIAS_ENTRENO().includes(new Date(f+'T12:00:00').getDay());
+function misionesDe(f){
+  const cs=comidasDe(f),t=totales(cs),mk=meta('kcal'),mp=meta('p'),ma=metaAgua();
+  const ents=lista(S.entrenos).filter(e=>e.f===f&&e.estado!=='en curso'&&(e.ej||[]).some(x=>(x.series||[]).length));
+  const ms=[
+    {k:'prot',n:`Proteína ${mp?fmt(mp)+' g':''}`,ic:'🥩',xp:20,ppal:true,ok:!!mp&&t.p>=mp*0.98,det:`${fmt(t.p)}${mp?' / '+fmt(mp):''} g`},
+    {k:'kcal',n:`Calorías en la meta`,ic:'🎯',xp:20,ppal:true,ok:!!mk&&t.kcal>=mk*0.7&&t.kcal<=mk*1.03,det:`${fmt(t.kcal)}${mk?' / '+fmt(mk):''}`},
+  ];
+  if(esDiaEntreno(f))ms.push({k:'ent',n:'Entrenar',ic:'🏋️',xp:30,ppal:true,ok:ents.length>0,det:ents.length?'hecho':'toca hoy'});
+  ms.push(
+    {k:'agua',n:`Agua ${litros(ma)} L`,ic:'💧',xp:10,ok:aguaDe(f)>=ma,det:`${litros(aguaDe(f))} L`},
+    {k:'creat',n:'Creatina',ic:'💊',xp:10,ok:cs.some(c=>/creatina/i.test(c.n))},
+    {k:'peso',n:'Pesarte',ic:'⚖️',xp:10,ok:lista(S.peso).some(x=>x.f===f&&x.kg!=null)},
+    {k:'comidas',n:'Cargar las 4 comidas',ic:'🍽️',xp:10,ok:['desayuno','almuerzo','merienda','cena'].every(m=>cs.some(c=>momentoDe(c)===m))});
+  return ms;
+}
+const diaPrincipal=f=>misionesDe(f).filter(m=>m.ppal).every(m=>m.ok);
+const diaPerfecto=f=>misionesDe(f).every(m=>m.ok);
+// Récords: un día tiene récord si en algún ejercicio la fuerza estimada supera la de todos los días anteriores.
+function recordsPorDia(){
+  const mejorHasta={},out={};
+  for(const e of entrenosOrd().slice().reverse()){if(e.estado==='en curso')continue;
+    for(const x of e.ej||[]){const rm=Math.max(0,...(x.series||[]).map(s=>(num(s.kg)||0)*(1+(num(s.r)||0)/30)));if(!rm)continue;
+      const k=normN(x.n);if(mejorHasta[k]!=null&&rm>mejorHasta[k]+0.01)(out[e.f]=out[e.f]||[]).push(x.n);mejorHasta[k]=Math.max(mejorHasta[k]||0,rm);}}
+  return out;
+}
+function primerDia(){const fs=[...lista(S.comidas).map(c=>c.f),...lista(S.peso).map(p=>p.f)].filter(Boolean).sort();return fs[0]||hoy();}
+function calcNivel(){
+  const rec=recordsPorDia();let xp=0,f=primerDia();const dias=[];
+  while(f<=hoy()){const ms=misionesDe(f);let x=ms.filter(m=>m.ok).reduce((t,m)=>t+m.xp,0);if(ms.every(m=>m.ok))x+=20;if(rec[f])x+=30*rec[f].length;xp+=x;dias.push({f,x});f=sumarDias(f,1);}
+  let nivel=1,base=0;const costo=n=>100+50*(n-1);while(xp>=base+costo(nivel)){base+=costo(nivel);nivel++;}
+  return {xp,nivel,enNivel:xp-base,falta:costo(nivel)-(xp-base),costo:costo(nivel),dias,rec};
+}
+// Racha: días seguidos cumpliendo las principales (hoy cuenta sólo si ya se cumplió; si no, no la corta todavía).
+function racha(){let n=0,f=hoy();if(!diaPrincipal(f))f=sumarDias(f,-1);while(f>=primerDia()&&diaPrincipal(f)){n++;f=sumarDias(f,-1);}return n;}
+function mejorRacha(){let m=0,n=0,f=primerDia();while(f<hoy()||(f===hoy()&&diaPrincipal(f))){if(diaPrincipal(f)){n++;m=Math.max(m,n);}else n=0;f=sumarDias(f,1);}return m;}
+function logros(nv){
+  const ps=pesosOrd(),p0=ps[0],pu=ps[ps.length-1],baj=p0&&pu?p0.kg-pu.kg:0;
+  const ents=lista(S.entrenos).filter(e=>e.estado!=='en curso'&&(e.ej||[]).some(x=>(x.series||[]).length)).length;
+  const mr=Math.max(mejorRacha(),racha()),d=DESAFIO(),dia=Math.floor((new Date(hoy()+'T12:00:00')-new Date(d.inicio+'T12:00:00'))/864e5)+1;
+  const cuenta=fn=>nv.dias.filter(x=>fn(x.f)).length;
+  const seguidos=fn=>{let m=0,n=0;for(const x of nv.dias){if(fn(x.f)){n++;m=Math.max(m,n);}else n=0;}return m;};
+  return [
+    ['🌱','Primer paso','Un día con las 3 principales',mr>=1],
+    ['🔥','Racha de 3','3 días seguidos',mr>=3],['🔥','Racha de 7','Una semana seguida',mr>=7],['🔥','Racha de 14','Dos semanas seguidas',mr>=14],['🔥','Racha de 30','Un mes seguido',mr>=30],
+    ['🏋️','Primer entreno','Anotar un entreno',ents>=1],['🏋️','10 entrenos','10 entrenos anotados',ents>=10],['🏋️','30 entrenos','30 entrenos anotados',ents>=30],
+    ['🏆','Nuevo récord','Superar tu mejor marca en un ejercicio',Object.keys(nv.rec).length>0],['🏆','5 récords','5 días con récord',Object.keys(nv.rec).length>=5],
+    ['⚖️','−1 kg','1 kg menos que el primer pesaje',baj>=1],['⚖️','−3 kg','3 kg menos',baj>=3],['⚖️','−5 kg','5 kg menos',baj>=5],
+    ['💧','Hidratado','7 días con el agua completa',cuenta(f=>aguaDe(f)>=metaAgua())>=7],
+    ['🥩','Proteína de hierro','7 días seguidos llegando a la proteína',seguidos(f=>misionesDe(f)[0].ok)>=7],
+    ['⭐','Día perfecto','Todas las misiones en un día',cuenta(diaPerfecto)>=1],['🌟','Semana perfecta','7 días perfectos seguidos',seguidos(diaPerfecto)>=7],
+    ['⛰️','Mitad del desafío',`Llegar al día ${Math.ceil(d.dias/2)}`,dia>=Math.ceil(d.dias/2)],['👑','Desafío completo',`Llegar al día ${d.dias}`,dia>=d.dias],
+    ['🎖️','Nivel 5','Llegar al nivel 5',nv.nivel>=5],['🎖️','Nivel 10','Llegar al nivel 10',nv.nivel>=10],
+  ];
+}
+function htmlNivelMini(f){
+  const nv=calcNivel(),d=DESAFIO(),dia=Math.floor((new Date(hoy()+'T12:00:00')-new Date(d.inicio+'T12:00:00'))/864e5)+1,ms=misionesDe(f),hechas=ms.filter(m=>m.ok).length;
+  return `<div class="card nivelmini" onclick="ir('nivel')" style="cursor:pointer">
+    <div class="row sp" style="flex-wrap:nowrap;gap:8px"><span><b style="font-size:1.05rem">🎯 ${dia>=1?`Día ${Math.min(dia,d.dias)}/${d.dias}`:`Arranca el ${fechaLinda(d.inicio)}`}</b> <span class="mu">· Nivel ${nv.nivel} · 🔥 ${racha()}</span></span><span class="mu" style="white-space:nowrap">${hechas}/${ms.length} ›</span></div>
+    <div class="bar" style="height:8px"><i style="width:${Math.round(nv.enNivel/nv.costo*100)}%;background:var(--amber)"></i></div>
+    <div class="mchips">${ms.map(m=>`<span class="mchip${m.ok?' ok':''}${m.ppal?' ppal':''}" title="${esc(m.n)}">${m.ok?'✓':m.ic} ${esc(m.n.split(' ')[0])}</span>`).join('')}</div></div>`;
+}
+function pNivel(){
+  const nv=calcNivel(),d=DESAFIO(),f=hoy(),dia=Math.floor((new Date(f+'T12:00:00')-new Date(d.inicio+'T12:00:00'))/864e5)+1,ms=misionesDe(f),lg=logros(nv);
+  const ps=pesosOrd(),p0=ps[0],pu=ps[ps.length-1];
+  const prom=(fs,fn)=>{const v=fs.map(fn).filter(x=>x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:null;};
+  const fs=nv.dias.map(x=>x.f),pri=fs.slice(0,7),ult=fs.slice(-7);
+  const filas=[['⚖️ Peso',p0&&fmtKg(p0.kg)+' kg',pu&&fmtKg(pu.kg)+' kg'],
+    ['💧 Agua por día',prom(pri,aguaDe)&&litros(prom(pri,aguaDe))+' L',prom(ult,aguaDe)&&litros(prom(ult,aguaDe))+' L'],
+    ['🥩 Proteína por día',prom(pri,x=>totales(comidasDe(x)).p)&&fmt(prom(pri,x=>totales(comidasDe(x)).p))+' g',prom(ult,x=>totales(comidasDe(x)).p)&&fmt(prom(ult,x=>totales(comidasDe(x)).p))+' g']];
+  const ejs=[...new Set(entrenosOrd().flatMap(e=>(e.ej||[]).filter(x=>(x.series||[]).length).map(x=>x.n)))];
+  for(const n of ejs){const ses=entrenosOrd().map(e=>(e.ej||[]).find(x=>normN(x.n)===normN(n))).filter(x=>x&&(x.series||[]).length).map(x=>Math.max(...x.series.map(s=>(num(s.kg)||0)*(1+(num(s.r)||0)/30))));
+    if(ses.length&&ses[0]>0)filas.push(['🏋️ '+n,fmtKg(ses[ses.length-1])+' kg',fmtKg(Math.max(...ses))+' kg']);}
+  return `<div class="row sp" style="margin-bottom:12px;flex-wrap:nowrap"><button onclick="ir('dieta')" aria-label="Volver">‹ Volver</button><h1 style="margin:0">Nivel</h1><span style="width:70px"></span></div>
+  <div class="card nivelbig"><div class="row sp" style="flex-wrap:nowrap"><div><div class="mu" style="text-transform:uppercase;font-size:.75rem;letter-spacing:.05em">Desafío ${d.dias} días</div>
+      <div class="big" style="font-size:2.4rem">${dia>=1?`Día ${Math.min(dia,d.dias)}`:'Arranca '+fechaLinda(d.inicio)}<span class="mu" style="font-size:1rem"> / ${d.dias}</span></div></div>
+    <div style="text-align:right"><div class="nivnum">${nv.nivel}</div><div class="mu" style="font-size:.75rem">NIVEL</div></div></div>
+    <div class="bar" style="height:10px;margin-top:10px"><i style="width:${Math.round(nv.enNivel/nv.costo*100)}%;background:var(--amber)"></i></div>
+    <div class="row sp mu" style="font-size:.8rem;margin-top:4px"><span>${fmt(nv.xp)} puntos</span><span>faltan ${fmt(nv.falta)} para el nivel ${nv.nivel+1}</span></div>
+    <div class="grid3" style="margin-top:12px"><div><b>🔥 ${racha()}</b><span>racha</span></div><div><b>${Math.max(mejorRacha(),racha())}</b><span>mejor racha</span></div><div><b>${lg.filter(x=>x[3]).length}/${lg.length}</b><span>logros</span></div></div></div>
+  <div class="card"><h2>🎯 Misiones de hoy</h2><div class="lista">${ms.map(m=>`<div><span style="font-size:1.4rem;width:32px;text-align:center">${m.ok?'✅':m.ic}</span><span class="gr"><b style="${m.ok?'text-decoration:line-through;color:var(--accent)':''}">${esc(m.n)}</b>${m.ppal?' <span class="plantag" style="border-style:solid;color:var(--amber)">racha</span>':''}${m.det?`<br><span class="mu">${esc(m.det)}</span>`:''}</span><b class="mu">+${m.xp}</b></div>`).join('')}</div>
+    <div class="mu" style="margin-top:8px">Se tachan solas con lo que cargás. Las marcadas "racha" son las que la mantienen viva. Todas juntas: +20 extra. Cada récord de fuerza: +30.</div></div>
+  <div class="card"><h2>🏆 Logros</h2><div class="logros">${lg.map(([ic,n,dsc,ok])=>`<div class="logro${ok?' ok':''}"><div class="lic">${ok?ic:'🔒'}</div><b>${esc(n)}</b><span>${esc(dsc)}</span></div>`).join('')}</div></div>
+  <div class="card"><h2>📊 Antes y después</h2><div class="mu" style="margin-bottom:6px">Primera semana / primer dato contra ahora (fuerza: primera vez contra tu mejor marca).</div>
+    <div class="lista">${filas.filter(x=>x[1]||x[2]).map(([n,a,b])=>`<div><span class="gr">${esc(n)}</span><span class="mu" style="white-space:nowrap">${a||'–'} → <b style="color:var(--text)">${b||'–'}</b></span></div>`).join('')}</div></div>
+  <div class="card"><h2>📅 Puntos por día</h2>${(()=>{const ds=nv.dias.slice(-30),mx=Math.max(1,...ds.map(x=>x.x));return `<div class="xpbars">${ds.map(x=>`<i title="${fechaLinda(x.f)}: ${x.x}" style="height:${Math.max(3,Math.round(x.x/mx*100))}%;${x.f===hoy()?'background:var(--amber)':''}"></i>`).join('')}</div><div class="row sp mu" style="font-size:.75rem"><span>${ds[0]?fechaLinda(ds[0].f):''}</span><span>hoy</span></div>`;})()}</div>`;
+}
 function frecuentes(){
   const desde=sumarDias(hoy(),-90),m={};
   for(const c of lista(S.comidas).filter(c=>c.f>=desde&&c.n)){const k=normN(nombreComida(c));if(!m[k])m[k]={cant:0,ult:c};m[k].cant++;if((c.t||0)>(m[k].ult.t||0))m[k].ult=c;}
@@ -779,6 +884,7 @@ function pDieta(){
   const fr=frecuentes();
   const ps=pesosOrd().filter(p=>p.f<=f),u=ps[ps.length-1],ant=ps[ps.length-2],dif=u&&ant?u.kg-ant.kg:null;
   return `${htmlSemana(f)}
+  ${htmlNivelMini(f)}
   <div class="card row sp" onclick="ir('peso')" style="cursor:pointer;flex-wrap:nowrap;padding:10px 14px"><span class="mu">⚖️ Peso${u&&u.f!==f?' ('+fechaLinda(u.f)+')':''}</span>
     <span><b style="font-size:1.25rem">${u?fmtKg(u.kg)+' kg':'–'}</b>${dif!=null?` <span style="color:${dif<=0?'var(--accent)':'var(--amber)'}">${dif<=0?'▼':'▲'} ${fmtKg(Math.abs(dif))}</span>`:''}</span></div>
   ${htmlCalMacros(t,false,tp,f)}

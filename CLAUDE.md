@@ -46,6 +46,7 @@ Subir cada cambio a `main` con un mensaje claro.
     `m` es en qué comida del día va (la pantalla Dieta las agrupa así); el nombre va sin "Desayuno:" adelante. Las "comidas frecuentes" salen solas de lo cargado (no se guardan aparte).
   - `agua/{AAAA-MM-DD}`: mililitros tomados ese día (un número). En la carga: `"agua":{"2026-10-31":1500}` pone el total del día.
   - `config`: `{kcal, p, c, g, agua (ml, si no 3000), pesoMeta, descanso (segundos, si no 180)}` (metas por día).
+    También `desafio:{inicio:'2026-11-05',dias:66}` y `diasEntreno:[2,4,6]` (martes, jueves, sábado) para la pantalla Nivel.
   - `fotos/{id}`: `{f, mini: foto chiquita en texto (data:image/jpeg), nota, t}` y `fotosFull/{id}`: la foto grande (se baja sólo al abrirla).
     Las fotos van a la base, NUNCA al repositorio (es público).
 - Sin internet: la app muestra lo último que vio (guardado en el teléfono) y lo que se carga queda en una cola en el teléfono que se
@@ -102,6 +103,9 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 - 02/11/2026: trabaja de 12:30 a 20:30 y sale muerto; a la mañana no puede: 02/11: decidió ir a SU gimnasio (en casa sin peso "no sirve" para él). Va 3 veces por semana, 1 hora: martes, jueves y sábados. 02/11: quiere la MISMA rutina los 3 días: "Full body (martes, jueves y sábados)", press inclinado con mancuernas, dominadas lastradas, sentadilla, peso muerto rumano (sin press militar, 02/11) + elevaciones laterales intercaladas; 4 series en inclinado, dominadas y laterales (12 por semana), 3 en el resto; reps en rango (doble progresión: llegar al tope del rango en todas las series → subir peso; no llegar al mínimo 2 veces → bajar 5-10 %; la app lo calcula y lo muestra en cada ejercicio, con la guía "📘 Cómo progresar" en Entreno), descanso 2 min (config.descanso=120), 1 hora. Prioridad estética: pecho de arriba y hombro de costado (cintura ya angosta).
   Tiene: un fierro a la altura de una silla (remo invertido), sillas, el piso. Las sentadillas sin peso lo cansan mucho (3×12 y queda sin fuerza).
   Lleva años entrenando pesado. Sus marcas en el gimnasio: dominadas con 20 kg de lastre, press plano 87 kg (80 + barra de 7), sentadilla 70 kg.
+- 05/11/2026: pantalla Nivel (estilo juego, original, sin copiar otra app): misiones del día que se tachan solas con los datos,
+  puntos, nivel, racha, logros, antes y después, desafío de 66 días desde el 05/11. Cuadro chico arriba en Dieta; tocándolo abre Nivel.
+  La racha la cortan sólo las 3 principales: proteína ≥ meta, calorías entre 70 % y 103 % de la meta, entrenar los días que toca.
 - 31/10/2026: la app la usa SÓLO él. Nadie puede crearse una cuenta solo (Firebase → Authentication → Configuración → Acciones del
   usuario: "Habilitar la creación" y "Habilitar la eliminación" apagados). Un usuario nuevo se agrega sólo desde la consola de Firebase
   y sólo con su permiso; además las reglas de la base dejan entrar únicamente a su UID (yGnUEddKRxWUZCJKrkmpbxrzrXG2).
