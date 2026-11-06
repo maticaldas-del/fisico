@@ -205,8 +205,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.23';
+const APP_VERSION='1.24';
 const APP_CAMBIOS=[
+  {v:'1.24',f:'05/11',h:'22:50',c:[{n:1,t:'Arreglado: lo que cargás "con un toque" ahora también suma sus vitaminas y minerales.'}]},
   {v:'1.23',f:'05/11',h:'00:50',c:[{n:3,t:'Nivel y desafío de 66 días: arriba en Dieta ves el día del desafío, tu nivel, la racha 🔥 y las misiones de hoy (proteína, calorías, entrenar, agua, creatina, pesarte, 4 comidas), que se tachan solas con lo que cargás. Tocándolo: puntos, logros que se desbloquean, antes y después, y puntos por día.'}]},
   {v:'1.22',f:'02/11',h:'22:50',c:[{n:3,t:'Historial completo de entrenos: elegís un ejercicio y ves cada día que lo hiciste con todas las series, el récord, la fuerza estimada y los kilos totales, con gráfico. Abajo, todos los entrenos agrupados por mes; tocando uno se abre con todo el detalle.'}]},
   {v:'1.21',f:'02/11',h:'22:30',c:[{n:3,t:'Entreno: en cada ejercicio la app te dice si hoy toca ⬆️ subir el peso (hiciste el tope del rango en todas las series), ⬇️ bajarlo (dos veces sin llegar al mínimo) o ➡️ mantenerlo y sumar repeticiones, y te pone ese peso. Abajo está la guía "📘 Cómo progresar".'}]},
@@ -917,7 +918,7 @@ function agregarComida(m){
   document.activeElement&&document.activeElement.blur();
   agregarEn='';guardar('comidas/'+nuevoId(),o);toast('Guardado');
 }
-function repetirComida(id,m){const c=S.comidas[id];if(!c)return;const mm=m||momentoDe(c),o={f:diaParaComida(diaDieta||hoy(),mm),t:Date.now(),n:nombreComida(c),m:mm};for(const k of ['kcal','p','c','g'])if(c[k]!=null)o[k]=c[k];agregarEn='';guardar('comidas/'+nuevoId(),o);toast('Agregado: '+o.n);}
+function repetirComida(id,m){const c=S.comidas[id];if(!c)return;const mm=m||momentoDe(c),o={f:diaParaComida(diaDieta||hoy(),mm),t:Date.now(),n:nombreComida(c),m:mm};for(const k of ['kcal','p','c','g'])if(c[k]!=null)o[k]=c[k];if(c.mi)o.mi=c.mi;agregarEn='';guardar('comidas/'+nuevoId(),o);toast('Agregado: '+o.n);}
 
 // ── FOTOS ── Se guardan en la base (no en el repositorio): una chiquita para la lista y una grande que se baja al abrirla.
 let fotosVis=[],visorI=0;const fullCache={};
