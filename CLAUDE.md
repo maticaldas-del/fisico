@@ -92,6 +92,8 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 - 31/10/2026: lo que come lo pasa por el chat y lo carga Claude.
 - 01/11/2026: come 4 veces, a las 11 (desayuno), 16 (almuerzo), 20 (merienda) y 24 h (cena). No más, no menos. La cena de las 24 h
   es del día que termina: al cargarla (aunque sea entre las 0 y las 4 h) va con la fecha del día anterior. La app hace lo mismo sola.
+  05/11: la comida va por ORDEN, no por la hora: 1.ª desayuno, 2.ª almuerzo, 3.ª merienda, 4.ª cena (aunque se atrase).
+  Al cargar, usar el primer momento del día que todavía está vacío.
 - 01/11/2026: SIEMPRE hora de Argentina (UTC−3) y el día cambia normal a las 00:00 (la app usa la hora argentina aunque el aparato tenga otra).
 - 01/11/2026: no le gustan: banana con el café (con el café quiere algo para masticar: barra o galletitas), aceite de oliva, atún al natural, yogur.
 - 01/11/2026: café, té, mate y demás bebidas sin alcohol cuentan como agua: al cargarlos, Claude suma su volumen al agua del día. Medidas de Matías: un café = 350 ml, un té = 350 ml, un vaso de agua = 250 ml (02/11).
