@@ -131,6 +131,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .logro .lic{font-size:1.8rem}.logro b{font-size:.8rem}.logro span{font-size:.68rem;color:var(--muted)}
 .xpbars{display:flex;align-items:flex-end;gap:2px;height:80px;margin:6px 0}
 .xpbars i{flex:1;background:var(--accent);border-radius:2px 2px 0 0;min-width:3px}
+.entreloj{color:var(--amber);white-space:nowrap;font-variant-numeric:tabular-nums}
+.card.ejok{border-color:var(--accent);background:#0b2a17}
+.card.ejok b{color:var(--accent)}
+body.flash::after{content:'';position:fixed;inset:0;z-index:250;pointer-events:none;background:var(--accent);animation:flash .5s steps(2,start) infinite}
+@keyframes flash{to{opacity:0}}
 .tanque{position:relative;height:120px;border-radius:14px;overflow:hidden;background:#0b1622;border:1px solid #1e3a5f;margin-top:8px}
 .tanque .nivel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#38bdf8,#0369a1);transition:height 1s cubic-bezier(.3,1.4,.5,1)}
 .tanque .ola{position:absolute;left:0;right:0;top:-13px;height:14px;background-repeat:repeat-x;background-size:120px 14px;
@@ -205,8 +210,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.24';
+const APP_VERSION='1.25';
 const APP_CAMBIOS=[
+  {v:'1.25',f:'07/11',h:'17:10',c:[{n:3,t:'Entreno: reloj con el tiempo del entreno (y la duración queda en el historial); cada serie arranca con las repeticiones y el peso de esa misma serie la vez anterior; la tarjeta se pone verde ✓ al completar las series; alarma del descanso más fuerte, repetida y con la pantalla parpadeando en verde (se corta tocando la pantalla). Descanso de 3 minutos.'},{n:2,t:'Peso: línea dorada punteada con el peso objetivo de cada día (bajando 0,5 kg por semana hasta tu meta) y si vas adelantado o atrasado. El gráfico arranca en 1 mes.'}]},
   {v:'1.24',f:'05/11',h:'22:50',c:[{n:1,t:'Arreglado: lo que cargás "con un toque" ahora también suma sus vitaminas y minerales.'}]},
   {v:'1.23',f:'05/11',h:'00:50',c:[{n:3,t:'Nivel y desafío de 66 días: arriba en Dieta ves el día del desafío, tu nivel, la racha 🔥 y las misiones de hoy (proteína, calorías, entrenar, agua, creatina, pesarte, 4 comidas), que se tachan solas con lo que cargás. Tocándolo: puntos, logros que se desbloquean, antes y después, y puntos por día.'}]},
   {v:'1.22',f:'02/11',h:'22:50',c:[{n:3,t:'Historial completo de entrenos: elegís un ejercicio y ves cada día que lo hiciste con todas las series, el récord, la fuerza estimada y los kilos totales, con gráfico. Abajo, todos los entrenos agrupados por mes; tocando uno se abre con todo el detalle.'}]},
@@ -260,7 +266,7 @@ document.addEventListener('visibilitychange',()=>{
   if(diaDieta&&_ocultaDesde&&Date.now()-_ocultaDesde>5*60e3){diaDieta=null;agregarEn='';pintarPronto();}
 });
 setInterval(()=>{const h=hoy();if(_hoyVisto&&h!==_hoyVisto){diaDieta=null;pintarPronto();}_hoyVisto=h;},60e3);
-let diaDieta=null,rangoPeso=365,ejGraf='',histVer='kg';
+let diaDieta=null,rangoPeso=30,ejGraf='',histVer='kg';
 
 // ── AYUDAS ──
 const $=id=>document.getElementById(id);
@@ -466,7 +472,8 @@ function pPeso(){
     <div><b>${act?v1(act.y)+' '+mu:'–'}</b><span>Actual</span></div>
     <div><b style="color:${colDif}">${dif==null?'–':(dif<0?'↘ ':dif>0?'↗ ':'')+v1(Math.abs(dif))+' '+mu}</b><span>Cambio${pct!=null&&dif?` (${dif<0?'−':'+'}${v1(Math.abs(pct))}%)`:''}</span></div>
   </div>
-  <div class="card">${graficoGrande(pts,mu,desde||(pts[0]&&pts[0].f),hoy())}</div>
+  <div class="card">${graficoGrande(pts,mu,desde||(pts[0]&&pts[0].f),hoy(),mk==='kg'?pesoObjetivo:null)}
+    ${mk==='kg'&&meta('pesoMeta')?`<div class="mu" style="font-size:.78rem;margin-top:4px"><span style="color:#d4a72c">┅</span> Objetivo: bajar ${String(ritmoSemanal()).replace('.',',')} kg por semana hasta ${fmtKg(meta('pesoMeta'))} kg${(()=>{const u=todos[todos.length-1],o=u&&pesoObjetivo(u.f);if(o==null)return '';const d=num(u.kg)-o;return ' · hoy '+(Math.abs(d)<0.1?'justo en el objetivo':d<0?fmtKg(-d)+' kg adelantado':fmtKg(d)+' kg atrasado');})()}</div>`:''}</div>
   <h2 style="margin:16px 2px 8px">Entradas</h2>
   <div class="card entradas">${todos.slice().reverse().slice(0,120).map(p=>{const fs=fotosDelDia(p.f),ft=fs[0];
     const otras=MEDIDAS.filter(([k])=>k!==mk&&num(p[k])!=null).map(([k,n,u])=>n+' '+v1(num(p[k]))+' '+u);
@@ -478,14 +485,20 @@ function pPeso(){
 // Gráfico grande con líneas de referencia y fechas abajo.
 // Gráfico grande: el eje de abajo abarca TODO el período elegido (de 'desde' a 'hasta'), con una marca por día
 // y la fecha cada tantos días, así se ve el mes entero día por día aunque haya pocos pesajes.
-function graficoGrande(pts,unidad,desde,hasta){
+// Peso objetivo de cada día: desde el primer pesaje baja config.ritmo kg por semana (0,5 si no está) hasta config.pesoMeta.
+const ritmoSemanal=()=>meta('ritmo')||0.5;
+function pesoObjetivo(f){const ps=pesosOrd(),m=meta('pesoMeta');if(!ps.length||!m)return null;const p0=ps[0];
+  const sem=(new Date(f+'T12:00:00')-new Date(p0.f+'T12:00:00'))/(7*864e5);if(sem<0)return null;return Math.max(m,num(p0.kg)-ritmoSemanal()*sem);}
+function graficoGrande(pts,unidad,desde,hasta,objFn){
   if(!pts.length)return '<div class="mu" style="padding:30px 0;text-align:center">No hay datos en este período.</div>';
   const W=340,H=200,L=30,R=10,T=10,B=26,DIA=864e5;
   const dt=f=>new Date(f+'T12:00:00').getTime();
   let x0=dt(desde||pts[0].f),x1=dt(hasta||pts[pts.length-1].f);if(x1<=x0)x1=x0+DIA;
   const dias=Math.round((x1-x0)/DIA);
   const xs=pts.map(p=>dt(p.f)),ys=pts.map(p=>p.y);
-  let y0=Math.min(...ys),y1=Math.max(...ys);
+  // Línea dorada punteada del objetivo, un punto por día del período.
+  const obj=[];if(objFn){for(let t=x0;t<=x1+1;t+=DIA){const d=new Date(t),f=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'),v=objFn(f);if(v!=null)obj.push([t,v]);}}
+  let y0=Math.min(...ys,...obj.map(o=>o[1])),y1=Math.max(...ys,...obj.map(o=>o[1]));
   const paso=(y1-y0)<=4?1:(y1-y0)<=10?2:(y1-y0)<=25?5:10;
   y0=Math.floor(y0/paso)*paso-paso;y1=Math.ceil(y1/paso)*paso+paso;if(y0<0)y0=0;
   const X=x=>L+(x-x0)/(x1-x0)*(W-L-R),Y=y=>T+(y1-y)/(y1-y0)*(H-T-B);
@@ -503,6 +516,7 @@ function graficoGrande(pts,unidad,desde,hasta){
   return `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de ${unidad}">
     <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4ade80" stop-opacity=".25"/><stop offset="1" stop-color="#4ade80" stop-opacity="0"/></linearGradient></defs>
     ${g}${area}
+    ${obj.length>1?`<polyline fill="none" stroke="#d4a72c" stroke-width="1.8" stroke-dasharray="5 4" points="${obj.map(o=>X(o[0]).toFixed(1)+','+Y(o[1]).toFixed(1)).join(' ')}"/>`:''}
     ${pts.length>1?`<polyline fill="none" stroke="#4ade80" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" points="${d}"/>`:''}
     ${pts.length<=60?pts.map((p,i)=>`<circle cx="${X(xs[i]).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="3" fill="#4ade80"><title>${fechaLinda(p.f)}: ${p.y}</title></circle>`).join(''):''}
     <circle cx="${X(xs[xs.length-1]).toFixed(1)}" cy="${Y(ys[ys.length-1]).toFixed(1)}" r="4.5" fill="#4ade80" stroke="#0f0f11" stroke-width="2"/>
@@ -525,18 +539,22 @@ function pEntreno(){
   const enc=entrenoEnCurso(),rs=rutinasOrd(),prox=proximaRutina();
   let h='<h1>Entreno</h1>';
   if(enc){
-    h+=`<div class="card"><div class="row sp"><h2 style="margin:0">${esc(enc.rutinaN||'Entreno')} · ${fechaLinda(enc.f)}</h2></div></div>`;
+    h+=`<div class="card"><div class="row sp" style="flex-wrap:nowrap"><h2 style="margin:0">${esc(enc.rutinaN||'Entreno')} · ${fechaLinda(enc.f)}</h2><b id="ent-reloj" class="entreloj">⏱️ ${durTxt(Date.now()-inicioEnc(enc))}</b></div></div>`;
     (enc.ej||[]).forEach((ej,i)=>{
-      const uv=ultimaVez(ej.n,enc.id),primera=uv&&uv.series[0],cj=consejoEj(ej,enc.id);
+      const uv=ultimaVez(ej.n,enc.id),cj=consejoEj(ej,enc.id);
       const hechas=(ej.series||[]).length,ultimaHoy=hechas?ej.series[hechas-1]:null;
-      const kgPre=ultimaHoy&&num(ultimaHoy.kg)?num(ultimaHoy.kg):cj&&cj.kg?cj.kg:primera&&num(primera.kg)?num(primera.kg):null;
+      // Cada serie arranca con lo que hizo ESA serie la vez anterior (serie 1 → 1.ª de la última vez, etc.).
+      const ref=uv?(uv.series[hechas]||uv.series[uv.series.length-1]):null;
+      const kgPre=ultimaHoy&&num(ultimaHoy.kg)?num(ultimaHoy.kg):cj&&cj.tipo!=='igual'&&cj.kg?cj.kg:ref&&num(ref.kg)?num(ref.kg):null;
+      const repPre=ref?num(ref.r):null;
+      const rg=rangoDe(ej.plan),completo=rg&&hechas>=rg.series;
       const plan=ej.plan?`<span class="mu"> · plan ${esc(ej.plan)}</span>`:'';
-      h+=`<div class="card"><div class="row sp"><b>${esc(ej.n)}</b>${plan}</div>
+      h+=`<div class="card${completo?' ejok':''}"><div class="row sp"><b>${completo?'✓ ':''}${esc(ej.n)}</b>${plan}</div>
         <div class="mu">${uv?'La última vez ('+fechaLinda(uv.f)+'): '+txtSeries(uv.series):'Primera vez que lo hacés'}</div>
         ${cj&&!hechas?`<div class="consejo ${cj.tipo}">${cj.txt}</div>`:''}
         <div>${(ej.series||[]).map((s,j)=>`<span class="serie">${s.r}×${num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso'}<button class="x" onclick="borrarSerie(${i},${j})" aria-label="Borrar serie">✕</button></span>`).join('')}</div>
         <div class="row" style="margin-top:8px">
-          <div class="campo"><label for="r-${i}">Repeticiones</label><input id="r-${i}" inputmode="numeric" value="${primera?esc(primera.r):''}"></div>
+          <div class="campo"><label for="r-${i}">Repeticiones</label><input id="r-${i}" inputmode="numeric" value="${repPre!=null?esc(String(repPre)):''}"></div>
           <div class="campo"><label for="k-${i}">Peso (kg)</label><input id="k-${i}" inputmode="decimal" value="${kgPre!=null?esc(String(kgPre).replace('.',',')):''}"></div>
           <button class="pri" style="align-self:flex-end" onclick="agregarSerie(${i})">+ Serie</button>
         </div></div>`;
@@ -578,26 +596,32 @@ function pEntreno(){
   const porMes={};for(const e of hist){const k=e.f.slice(0,7);(porMes[k]=porMes[k]||[]).push(e);}
   h+=`<div class="card"><h2>🗓️ Todos los entrenos (${hist.length})</h2>${Object.keys(porMes).map(k=>{const [y,m]=k.split('-');return `<div class="mu" style="margin:12px 0 4px;font-weight:700;text-transform:uppercase;font-size:.75rem">${MESES[+m-1]} ${y} · ${porMes[k].length}</div>
     ${porMes[k].map(e=>{const ejs=(e.ej||[]).filter(x=>(x.series||[]).length),ns=ejs.reduce((t,x)=>t+x.series.length,0);
-      return `<details class="entd"><summary><span style="flex:1"><b>${fechaLinda(e.f)}</b> · ${esc(e.rutinaN||'Libre')}</span><span class="mu">${ejs.length} ej. · ${ns} series</span></summary>
+      return `<details class="entd"><summary><span style="flex:1"><b>${fechaLinda(e.f)}</b> · ${esc(e.rutinaN||'Libre')}</span><span class="mu">${ejs.length} ej. · ${ns} series${e.dur?' · '+durTxt(e.dur*60000):''}</span></summary>
         ${ejs.map(x=>`<div style="padding:6px 0 2px"><b style="font-size:.92rem">${esc(x.n)}</b><div class="mu">${x.series.map((s,j)=>`<span class="hs">S${j+1}: ${s.r}×${num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso'}</span>`).join('')}</div></div>`).join('')||'<div class="mu">Sin series anotadas.</div>'}
         <button class="peligro chico" style="margin-top:8px;min-height:44px" onclick="borrar('entrenos/${e.id}','¿Borrar el entreno del ${fechaLinda(e.f)}?')">Borrar este entreno</button></details>`;}).join('')}`;}).join('')||'<div class="mu">Todavía no hay entrenos.</div>'}</div>`;
   return h;
 }
+// Reloj del entreno: desde que arrancó (inicio) o, en entrenos viejos, desde la primera serie.
+function inicioEnc(e){if(e.inicio)return e.inicio;let m=Infinity;for(const x of e.ej||[])for(const s of x.series||[])if(s.t)m=Math.min(m,s.t);return m<Infinity?m:(e.t||Date.now());}
+const durTxt=ms=>{const m=Math.max(0,Math.floor(ms/60000));return m>=60?Math.floor(m/60)+' h '+String(m%60).padStart(2,'0')+' min':m+' min';};
+setInterval(()=>{const el=$('ent-reloj'),e=entrenoEnCurso();if(el&&e)el.textContent='⏱️ '+durTxt(Date.now()-inicioEnc(e));},15000);
 function empezarEntreno(rid){
   if(entrenoEnCurso()){ir('entreno');return;}
   const r=rid?S.rutinas[rid]:null;
   const ej=r?(r.ejercicios||[]).map(e=>({n:e.n,plan:(e.series?e.series+'×'+(e.reps||''):'')+(e.kg?' con '+e.kg+' kg':''),series:[]})):[];
-  guardar('entrenos/'+nuevoId(),{f:hoy(),t:Date.now(),estado:'en curso',rutina:rid||'',rutinaN:r?r.n:'Libre',ej});
+  guardar('entrenos/'+nuevoId(),{f:hoy(),t:Date.now(),inicio:Date.now(),estado:'en curso',rutina:rid||'',rutinaN:r?r.n:'Libre',ej});
   ir('entreno');
 }
 function guardarEnc(enc){const o=Object.assign({},enc);delete o.id;guardar('entrenos/'+enc.id,o);}
+const hayAlgunaSerie=e=>(e.ej||[]).some(x=>(x.series||[]).length);
 function agregarSerie(i){
   const enc=entrenoEnCurso();if(!enc)return;
   const r=num($('r-'+i).value),kg=num($('k-'+i).value);
   if(!r||r<1){toast('Poné las repeticiones','err');return;}
   const ej=enc.ej[i];ej.series=ej.series||[];
   const uv=ultimaVez(ej.n,enc.id),antes=uv&&mejor(uv.series),yaHoy=mejor(ej.series);
-  ej.series.push({r,kg:kg||0});
+  if(!enc.inicio&&!hayAlgunaSerie(enc))enc.inicio=Date.now()-60000;
+  ej.series.push({r,kg:kg||0,t:Date.now()});
   document.activeElement&&document.activeElement.blur();
   guardarEnc(enc);
   empezarDescanso(descSeg());
@@ -611,7 +635,7 @@ function agregarEjercicio(){const enc=entrenoEnCurso();const n=$('e-nuevo').valu
 function terminarEntreno(){const enc=entrenoEnCurso();if(!enc)return;
   const hechas=(enc.ej||[]).reduce((s,e)=>s+(e.series||[]).length,0);
   if(!hechas&&!confirm('No anotaste ninguna serie. ¿Terminar igual?'))return;
-  enc.estado='hecho';enc.fin=Date.now();guardarEnc(enc);cortarDescanso();toast('💪 Entreno guardado');}
+  enc.estado='hecho';enc.fin=Date.now();enc.dur=Math.round((enc.fin-inicioEnc(enc))/60000);guardarEnc(enc);cortarDescanso();toast('💪 Entreno guardado');}
 
 // ── DESCANSO ENTRE SERIES: al anotar una serie arranca un reloj (3 minutos, o config.descanso en segundos).
 // Se guarda la hora de fin en el teléfono, así sigue aunque la app se recargue. Al terminar: pitido, vibración y,
@@ -624,7 +648,7 @@ const mmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 function prepararAudio(){try{if(!_audio){const C=window.AudioContext||window.webkitAudioContext;if(C)_audio=new C();}if(_audio&&_audio.state==='suspended')_audio.resume();}catch(_){}}
 document.addEventListener('pointerdown',prepararAudio);
 function pitar(){if(!_audio)return;try{const t0=_audio.currentTime+0.05;for(let i=0;i<3;i++){const o=_audio.createOscillator(),g=_audio.createGain(),t=t0+i*0.35;
-  o.type='square';o.frequency.value=880;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.35,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
+  o.type='square';o.frequency.value=i%2?1175:880;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.9,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
   o.connect(g);g.connect(_audio.destination);o.start(t);o.stop(t+0.27);}}catch(_){}}
 function pedirPantalla(){try{if(navigator.wakeLock&&!_wake&&document.visibilityState==='visible')navigator.wakeLock.request('screen').then(w=>{_wake=w;w.addEventListener('release',()=>{_wake=null;});}).catch(()=>{});}catch(_){}}
 function soltarPantalla(){try{_wake&&_wake.release();}catch(_){}_wake=null;}
@@ -638,7 +662,12 @@ function empezarDescanso(seg){
   try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().catch(()=>{});}catch(_){}
 }
 function sumarDescanso(s){if(!_descFin)return;const base=_sonado?Date.now():_descFin;_sonado=false;_descFin=Math.max(Date.now()+1000,base+s*1000);guardarDesc();pedirPantalla();tickDescanso();}
-function cortarDescanso(){_descFin=0;_sonado=false;clearInterval(_descInt);_descInt=null;guardarDesc();soltarPantalla();tickDescanso();}
+function cortarDescanso(){pararAlarma();_descFin=0;_sonado=false;clearInterval(_descInt);_descInt=null;guardarDesc();soltarPantalla();tickDescanso();}
+// Alarma fuerte: pita cada 1,5 s durante 20 s y la pantalla parpadea en verde, hasta que toque la pantalla.
+let _alarmaInt=null;
+function alarma(){pararAlarma();document.body.classList.add('flash');pitar();let n=0;_alarmaInt=setInterval(()=>{pitar();if(++n>=13)pararAlarma();},1500);}
+function pararAlarma(){clearInterval(_alarmaInt);_alarmaInt=null;document.body.classList.remove('flash');}
+document.addEventListener('pointerdown',()=>{if(_alarmaInt)pararAlarma();},true);
 function tickDescanso(){
   const el=$('descanso');if(!el)return;
   if(!_descFin){el.style.display='none';document.body.classList.remove('con-desc');return;}
@@ -647,7 +676,7 @@ function tickDescanso(){
   if(falta>0){el.className='';$('d-txt').textContent='⏱️ '+mmss(falta);$('d-menos').style.display='';return;}
   el.className='fin';$("d-txt").textContent="💪 ¡Otra serie!";$('d-menos').style.display='none';
   if(!_sonado){_sonado=true;soltarPantalla();
-    if(falta>-5){pitar();setTimeout(pitar,1300);try{navigator.vibrate&&navigator.vibrate([400,150,400,150,400]);}catch(_){}avisarFondo();}}
+    if(falta>-5){alarma();try{navigator.vibrate&&navigator.vibrate([400,150,400,150,400]);}catch(_){}avisarFondo();}}
   if(falta<-60)cortarDescanso();
 }
 // Si la app se recargó en medio de un descanso, sigue donde estaba.
