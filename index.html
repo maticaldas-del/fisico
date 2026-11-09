@@ -136,6 +136,17 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .card.ejok b{color:var(--accent)}
 body.flash::after{content:'';position:fixed;inset:0;z-index:250;pointer-events:none;background:var(--accent);animation:flash .5s steps(2,start) infinite}
 @keyframes flash{to{opacity:0}}
+.cmpwrap{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cmpwrap.uno{grid-template-columns:1fr}
+.cmp{position:relative;border-radius:10px;overflow:hidden;border:2px solid transparent;cursor:pointer;background:var(--surface2)}
+.cmp.sel{border-color:var(--accent)}
+.cmp img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.cmpwrap.uno .cmp img{aspect-ratio:auto;max-height:70vh;object-fit:contain}
+.cmpd{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 6px;background:linear-gradient(transparent,rgba(0,0,0,.8));display:flex;flex-direction:column;align-items:center;color:#fff}
+.cmpd b{font-size:1.1rem}.cmpd span{font-size:.8rem}
+.tira{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.tira img{width:64px;height:84px;object-fit:cover;border-radius:6px;flex:none;cursor:pointer;opacity:.6;border:2px solid transparent}
+.tira img.on{opacity:1;border-color:var(--accent)}
 .tanque{position:relative;height:120px;border-radius:14px;overflow:hidden;background:#0b1622;border:1px solid #1e3a5f;margin-top:8px}
 .tanque .nivel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#38bdf8,#0369a1);transition:height 1s cubic-bezier(.3,1.4,.5,1)}
 .tanque .ola{position:absolute;left:0;right:0;top:-13px;height:14px;background-repeat:repeat-x;background-size:120px 14px;
@@ -210,8 +221,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.25';
+const APP_VERSION='1.26';
 const APP_CAMBIOS=[
+  {v:'1.26',f:'09/11',h:'11:10',c:[{n:2,t:'Fotos: "Comparar", dos fotos lado a lado (antes y después) con el peso y la fecha de cada una, los días entre las dos y cuántos kilos bajaste. También se puede ver una sola, grande. Se elige con la tira de miniaturas.'}]},
   {v:'1.25',f:'07/11',h:'17:10',c:[{n:3,t:'Entreno: reloj con el tiempo del entreno (y la duración queda en el historial); cada serie arranca con las repeticiones y el peso de esa misma serie la vez anterior; la tarjeta se pone verde ✓ al completar las series; alarma del descanso más fuerte, repetida y con la pantalla parpadeando en verde (se corta tocando la pantalla). Descanso de 3 minutos.'},{n:2,t:'Peso: línea dorada punteada con el peso objetivo de cada día (bajando 0,5 kg por semana hasta tu meta) y si vas adelantado o atrasado. El gráfico arranca en 1 mes.'}]},
   {v:'1.24',f:'05/11',h:'22:50',c:[{n:1,t:'Arreglado: lo que cargás "con un toque" ahora también suma sus vitaminas y minerales.'}]},
   {v:'1.23',f:'05/11',h:'00:50',c:[{n:3,t:'Nivel y desafío de 66 días: arriba en Dieta ves el día del desafío, tu nivel, la racha 🔥 y las misiones de hoy (proteína, calorías, entrenar, agua, creatina, pesarte, 4 comidas), que se tachan solas con lo que cargás. Tocándolo: puntos, logros que se desbloquean, antes y después, y puntos por día.'}]},
@@ -958,9 +970,35 @@ function pFotos(){
     <div class="campo"><label for="f-nota">Nota (opcional)</label><input id="f-nota" placeholder="De frente, en ayunas"></div></div>
     <label class="btn pri" style="display:flex;align-items:center;justify-content:center;margin-top:10px">📸 Elegir fotos<input id="f-arch" type="file" accept="image/*" multiple style="display:none" onchange="subirFotos(this.files)"></label>
     <div id="f-estado" class="estado"></div></div>
+  <div id="f-comp"></div>
   <div id="f-grilla">${n?'':'<div class="card mu">Todavía no hay fotos.</div>'}</div>`;
 }
+// ── COMPARAR (galería de progreso): dos fotos lado a lado (o una sola), con la fecha y el peso de ese día.
+// Por defecto: la primera foto contra la última. Tocando "Antes" o "Después" y después una miniatura, se cambia esa.
+let compA=null,compB=null,compLado='B',compModo=2;
+const ordFotos=()=>lista(S.fotos).sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:(a.t||0)-(b.t||0));
+function pesoDeFecha(f){const ps=pesosOrd().filter(p=>p.f<=f);const u=ps[ps.length-1];if(!u)return null;const dias=(new Date(f+'T12:00:00')-new Date(u.f+'T12:00:00'))/864e5;return dias<=7?u:null;}
+function cargarFull(id,cb){if(fullCache[id])return cb(fullCache[id]);if(!db)return;db.ref(RAIZ+'/fotosFull/'+id).once('value').then(s=>{if(s.val()){fullCache[id]=s.val();cb(s.val());}}).catch(()=>{});}
+function pintarComparar(){
+  const el=$('f-comp');if(!el)return;const fs=ordFotos();
+  if(fs.length<2){el.innerHTML='';return;}
+  if(!compA||!S.fotos[compA])compA=fs[0].id;if(!compB||!S.fotos[compB])compB=fs[fs.length-1].id;
+  const lado=(id,k,tit)=>{const x=Object.assign({id},S.fotos[id]),p=pesoDeFecha(x.f);
+    return `<div class="cmp${compLado===k&&compModo===2?' sel':''}" onclick="compLado='${k}';pintarComparar()"><img id="cmp-${k}" src="${fullCache[id]||x.mini}" alt="${tit}">
+      <div class="cmpd"><b>${p?fmtKg(num(p.kg))+' kg':'– kg'}</b><span>${x.f.slice(8)}/${x.f.slice(5,7)}/${x.f.slice(0,4)}</span><span class="mu" style="font-size:.7rem">${tit}</span></div></div>`;};
+  const a=S.fotos[compA],b=S.fotos[compB],pa=pesoDeFecha(a.f),pb=pesoDeFecha(b.f);
+  const dif=pa&&pb?num(pb.kg)-num(pa.kg):null,dias=Math.round((new Date(b.f+'T12:00:00')-new Date(a.f+'T12:00:00'))/864e5);
+  el.innerHTML=`<div class="card"><div class="row sp" style="flex-wrap:nowrap;margin-bottom:8px"><h2 style="margin:0">🔍 Comparar</h2>
+      <div class="row" style="gap:4px;flex-wrap:nowrap"><button class="chip ${compModo===1?'on':''}" onclick="compModo=1;compLado='B';pintarComparar()" aria-label="Una foto">▢</button><button class="chip ${compModo===2?'on':''}" onclick="compModo=2;pintarComparar()" aria-label="Dos fotos">◫</button></div></div>
+    <div class="cmpwrap${compModo===1?' uno':''}">${compModo===2?lado(compA,'A','Antes'):''}${lado(compB,'B',compModo===2?'Después':'')}</div>
+    ${compModo===2&&dif!=null?`<div class="mu" style="text-align:center;margin-top:6px">${dias} días · ${Math.abs(dif)<0.05?'<b>mismo peso</b>':`<b style="color:${dif<0?'var(--accent)':'var(--amber)'}">${dif<0?'▼':'▲'} ${fmtKg(Math.abs(dif))} kg</b>`}</div>`:''}
+    <div class="mu" style="font-size:.78rem;margin:8px 0 4px">${compModo===2?`Tocá <b>${compLado==='A'?'Antes':'Después'}</b> (marcada) y elegí abajo la foto:`:'Elegí la foto:'}</div>
+    <div class="tira">${fs.map(x=>`<img src="${x.mini}" class="${x.id===compA&&compModo===2||x.id===compB?'on':''}" onclick="${compModo===1?'compB':(compLado==='A'?'compA':'compB')}='${x.id}';pintarComparar()" alt="Foto ${fechaLinda(x.f)}">`).join('')}</div></div>`;
+  for(const [k,id] of [['A',compA],['B',compB]])cargarFull(id,src=>{const im=$('cmp-'+k);if(im&&(k==='A'?compA:compB)===id)im.src=src;});
+  const t=el.querySelector('.tira img.on:last-child')||el.querySelector('.tira img:last-child');if(t)t.parentNode.scrollLeft=t.parentNode.scrollWidth;
+}
 function pintarMiniaturas(){
+  pintarComparar();
   const el=$('f-grilla');if(!el)return;
   const fs=lista(S.fotos).sort((a,b)=>a.f<b.f?1:a.f>b.f?-1:(b.t||0)-(a.t||0));fotosVis=fs;
   if(!fs.length)return;
