@@ -108,7 +108,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
   Tiene: un fierro a la altura de una silla (remo invertido), sillas, el piso. Las sentadillas sin peso lo cansan mucho (3×12 y queda sin fuerza).
   Lleva años entrenando pesado. Sus marcas en el gimnasio: dominadas con 20 kg de lastre, press plano 87 kg (80 + barra de 7), sentadilla 70 kg.
 - 10/11/2026: prefiere suplementos a fruta y gastar las calorías extra en un postre que le guste (chocolate, Danette, helado).
-  Plan con "Postre a elección ≈200 cal" fijo. Compra el multivitamínico Universal Daily Formula (1 por día, con el desayuno).
+  Plan con "Postre a elección ≈200 cal" fijo. Multivitamínico Universal Daily Formula (le llegó 13/11; 1 por día, con una comida). Cargarlo cada día que lo toma (está en el plan con sus valores).
   NO toma D3 (1 h de sol por día) ni omega 3 (caro): sugerir caballa/sardinas en lata 1-2 veces por semana. Verdura barata en calorías
   (ensalada/tomate ~30 kcal) para potasio y vitamina K.
 - 05/11/2026: pantalla Nivel (estilo juego, original, sin copiar otra app): misiones del día que se tachan solas con los datos,
