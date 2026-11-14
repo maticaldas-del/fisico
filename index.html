@@ -221,8 +221,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.26';
+const APP_VERSION='1.27';
 const APP_CAMBIOS=[
+  {v:'1.27',f:'13/11',h:'22:30',c:[{n:1,t:'Vitaminas y minerales ya no avisa "comida sin datos" por la creatina o el té (no tienen calorías).'}]},
   {v:'1.26',f:'09/11',h:'11:10',c:[{n:2,t:'Fotos: "Comparar", dos fotos lado a lado (antes y después) con el peso y la fecha de cada una, los días entre las dos y cuántos kilos bajaste. También se puede ver una sola, grande. Se elige con la tira de miniaturas.'}]},
   {v:'1.25',f:'07/11',h:'17:10',c:[{n:3,t:'Entreno: reloj con el tiempo del entreno (y la duración queda en el historial); cada serie arranca con las repeticiones y el peso de esa misma serie la vez anterior; la tarjeta se pone verde ✓ al completar las series; alarma del descanso más fuerte, repetida y con la pantalla parpadeando en verde (se corta tocando la pantalla). Descanso de 3 minutos.'},{n:2,t:'Peso: línea dorada punteada con el peso objetivo de cada día (bajando 0,5 kg por semana hasta tu meta) y si vas adelantado o atrasado. El gráfico arranca en 1 mes.'}]},
   {v:'1.24',f:'05/11',h:'22:50',c:[{n:1,t:'Arreglado: lo que cargás "con un toque" ahora también suma sus vitaminas y minerales.'}]},
@@ -845,7 +846,7 @@ const llego=(v,m)=>Math.round(v*10)>=Math.round(m*10)||v>=m*0.995;
 const fmtMi=n=>n>=100?fmt(n):(Math.round(n*10)/10).toLocaleString('es-AR',{maximumFractionDigits:1});
 function resumenMi(f){const t=totalesMiDia(f,comidasDe(f));let ok=0,tot=0;for(const [,xs] of NUTRI)for(const [k,,,m,tipo] of xs){if(tipo==='max')continue;tot++;if(llego(t[k]||0,m))ok++;}return {ok,tot};}
 function htmlNutri(f){
-  const cs=comidasDe(f),t=totalesMiDia(f,cs),tp=totalesMiDia(f,cs.concat(fantasmas(f))),hayPlan=fantasmas(f).length>0,sin=cs.filter(c=>!c.mi).length,{ok,tot}=resumenMi(f);
+  const cs=comidasDe(f),t=totalesMiDia(f,cs),tp=totalesMiDia(f,cs.concat(fantasmas(f))),hayPlan=fantasmas(f).length>0,sin=cs.filter(c=>!c.mi&&(num(c.kcal)||0)>5).length,{ok,tot}=resumenMi(f);
   return `<details class="card nutri" ${_nutriAbierto?'open':''} ontoggle="_nutriAbierto=this.open">
     <summary><span style="flex:1;color:var(--text)"><b>🧪 Vitaminas y minerales</b></span><span class="mu">${ok} de ${tot} completos ›</span></summary>
     ${sin?`<div class="mu" style="margin:6px 0">${sin} comida${sin>1?'s':''} sin estos datos (no suma${sin>1?'n':''} acá).</div>`:''}
