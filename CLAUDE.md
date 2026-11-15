@@ -96,6 +96,11 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
   05/11: la comida va por ORDEN, no por la hora: 1.ª desayuno, 2.ª almuerzo, 3.ª merienda, 4.ª cena (aunque se atrase).
   Al cargar, usar el primer momento del día que todavía está vacío.
 - 01/11/2026: SIEMPRE hora de Argentina (UTC−3) y el día cambia normal a las 00:00 (la app usa la hora argentina aunque el aparato tenga otra).
+- 15/11/2026: EL DÍA SE CARGA ENTERO CON EL PLAN, como si lo hubiera comido (pidió: "pone el día siempre anotado como si hubiera
+  comido eso; si como otra cosa te aviso"). En el primer mensaje del día, cargar todas las comidas del plan que falten como reales.
+  Cuando avisa otra cosa, REEMPLAZAR lo de esa comida (borrar lo del plan de esa comida y cargar lo real) y decirle cuánto le queda.
+  Plan (15/11, ≈1607 kcal, P 168): desayuno lo de siempre; almuerzo milanesa de pollo al horno 180 g + ensalada; merienda cuadril
+  180 g + 4 claras; cena 2 barras + té; postre 4 cuadraditos de Milka.
 - 15/11/2026: "LO DE SIEMPRE" (desayuno) = 2 barras Integra + té (350 ml) + creatina + multivitamínico. Si dice "con café" o "sin leche", café negro en vez de té.
 - 01/11/2026: no le gustan: banana con el café (con el café quiere algo para masticar: barra o galletitas), aceite de oliva, atún al natural, yogur.
 - 01/11/2026: café, té, mate y demás bebidas sin alcohol cuentan como agua: al cargarlos, Claude suma su volumen al agua del día. Medidas de Matías: un café = 350 ml, un té = 350 ml, un vaso de agua = 250 ml (02/11).
