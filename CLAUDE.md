@@ -101,7 +101,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
   Cuando avisa otra cosa, REEMPLAZAR lo de esa comida (borrar lo del plan de esa comida y cargar lo real) y decirle cuánto le queda.
   Plan (15/11, ≈1607 kcal, P 168): desayuno lo de siempre; almuerzo milanesa de pollo al horno 180 g + ensalada; merienda cuadril
   180 g + 4 claras; cena 2 barras + té; postre 4 cuadraditos de Milka.
-- 15/11/2026: "LO DE SIEMPRE" (desayuno) = 2 barras Integra + té (350 ml) + creatina + multivitamínico. Si dice "con café" o "sin leche", café negro en vez de té.
+- 15/11/2026: "LO DE SIEMPRE" (desayuno) = café instantáneo intenso 6 g (350 ml, sin leche) + 2 barras Integra + creatina + multivitamínico. El té es a la noche, con la cena.
 - 01/11/2026: no le gustan: banana con el café (con el café quiere algo para masticar: barra o galletitas), aceite de oliva, atún al natural, yogur.
 - 01/11/2026: café, té, mate y demás bebidas sin alcohol cuentan como agua: al cargarlos, Claude suma su volumen al agua del día. Medidas de Matías: un café = 350 ml, un té = 350 ml, un vaso de agua = 250 ml (02/11).
 - 01/11/2026: lo que come seguido (datos de etiqueta): barra Integra Proteica = 150 kcal, P 15, C 13, G 4,5, fibra 8 g, sodio 110 mg
