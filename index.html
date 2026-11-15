@@ -147,6 +147,11 @@ body.flash::after{content:'';position:fixed;inset:0;z-index:250;pointer-events:n
 .tira{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
 .tira img{width:64px;height:84px;object-fit:cover;border-radius:6px;flex:none;cursor:pointer;opacity:.6;border:2px solid transparent}
 .tira img.on{opacity:1;border-color:var(--accent)}
+.bar3{position:relative;height:8px;background:var(--border);border-radius:4px;margin-top:4px;display:flex;overflow:visible}
+.bar3 i{display:block;height:100%;border-radius:4px 0 0 4px}
+.bar3 i.fan{opacity:.35;border-radius:0}
+.bar3 b{position:absolute;top:-3px;width:2px;height:14px;background:var(--text);opacity:.55;border-radius:1px}
+.bar3 b.tope{background:var(--red);opacity:.9}
 .tanque{position:relative;height:120px;border-radius:14px;overflow:hidden;background:#0b1622;border:1px solid #1e3a5f;margin-top:8px}
 .tanque .nivel{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#38bdf8,#0369a1);transition:height 1s cubic-bezier(.3,1.4,.5,1)}
 .tanque .ola{position:absolute;left:0;right:0;top:-13px;height:14px;background-repeat:repeat-x;background-size:120px 14px;
@@ -221,8 +226,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.27';
+const APP_VERSION='1.28';
 const APP_CAMBIOS=[
+  {v:'1.28',f:'15/11',h:'13:40',c:[{n:2,t:'Vitaminas y minerales: ahora muestran también el MÁXIMO por día (lo que pasado puede hacer mal). La barra tiene dos rayitas: la meta y el tope. Entre las dos está bien (verde); si te pasás del tope se pone en rojo con ⚠️.'}]},
   {v:'1.27',f:'13/11',h:'22:30',c:[{n:1,t:'Vitaminas y minerales ya no avisa "comida sin datos" por la creatina o el té (no tienen calorías).'}]},
   {v:'1.26',f:'09/11',h:'11:10',c:[{n:2,t:'Fotos: "Comparar", dos fotos lado a lado (antes y después) con el peso y la fecha de cada una, los días entre las dos y cuántos kilos bajaste. También se puede ver una sola, grande. Se elige con la tira de miniaturas.'}]},
   {v:'1.25',f:'07/11',h:'17:10',c:[{n:3,t:'Entreno: reloj con el tiempo del entreno (y la duración queda en el historial); cada serie arranca con las repeticiones y el peso de esa misma serie la vez anterior; la tarjeta se pone verde ✓ al completar las series; alarma del descanso más fuerte, repetida y con la pantalla parpadeando en verde (se corta tocando la pantalla). Descanso de 3 minutos.'},{n:2,t:'Peso: línea dorada punteada con el peso objetivo de cada día (bajando 0,5 kg por semana hasta tu meta) y si vas adelantado o atrasado. El gráfico arranca en 1 mes.'}]},
@@ -845,16 +851,26 @@ function totalesMi(cs){const t={};for(const c of cs)for(const [k,v] of Object.en
 const llego=(v,m)=>Math.round(v*10)>=Math.round(m*10)||v>=m*0.995;
 const fmtMi=n=>n>=100?fmt(n):(Math.round(n*10)/10).toLocaleString('es-AR',{maximumFractionDigits:1});
 function resumenMi(f){const t=totalesMiDia(f,comidasDe(f));let ok=0,tot=0;for(const [,xs] of NUTRI)for(const [k,,,m,tipo] of xs){if(tipo==='max')continue;tot++;if(llego(t[k]||0,m))ok++;}return {ok,tot};}
+// Máximos tolerables por día (hombre adulto, Institutos Nacionales de Salud de EE.UU.). Pasarse de esto puede hacer mal.
+// Los que no tienen máximo para la comida (B3, ácido fólico y magnesio sólo lo tienen para pastillas; K, B1, B2, B5, B7, B12, potasio,
+// cromo, fibra, omegas) no figuran. La vitamina A cuenta sólo la de origen animal/pastillas, acá se suma toda (queda del lado seguro).
+const MAXIMO={vA:3000,vC:2000,vD:100,vE:1000,b6:100,col:3500,ca:2500,fe:45,fos:4000,zn:40,cu:10,mn:11,se:400,i:1100,mo:2000,cl:3600,fl:10};
+// Barra en tres tramos: 0 → meta (65 % del ancho), meta → máximo (30 %), más allá del máximo (5 %). Así la meta y el tope se ven siempre.
+function posBarra(v,m,max){if(v<=m)return v/m*65;if(v<=max)return 65+(v-m)/(max-m)*30;return Math.min(100,95+(v-max)/max*25);}
 function htmlNutri(f){
   const cs=comidasDe(f),t=totalesMiDia(f,cs),tp=totalesMiDia(f,cs.concat(fantasmas(f))),hayPlan=fantasmas(f).length>0,sin=cs.filter(c=>!c.mi&&(num(c.kcal)||0)>5).length,{ok,tot}=resumenMi(f);
   return `<details class="card nutri" ${_nutriAbierto?'open':''} ontoggle="_nutriAbierto=this.open">
     <summary><span style="flex:1;color:var(--text)"><b>🧪 Vitaminas y minerales</b></span><span class="mu">${ok} de ${tot} completos ›</span></summary>
     ${sin?`<div class="mu" style="margin:6px 0">${sin} comida${sin>1?'s':''} sin estos datos (no suma${sin>1?'n':''} acá).</div>`:''}
     ${NUTRI.map(([g,xs])=>`<div class="mu" style="margin:12px 0 4px;font-weight:700;text-transform:uppercase;font-size:.72rem;letter-spacing:.05em">${g}</div>
-      <div class="ngrid">${xs.map(([k,n,u,m,tipo])=>{const v=t[k]||0,vp=tp[k]||0,pct=Math.min(100,v/m*100),pctP=Math.max(0,Math.min(100,vp/m*100)-pct),hecho=tipo!=="max"&&llego(v,m),pasado=tipo==='max'&&v>m;
+      <div class="ngrid">${xs.map(([k,n,u,m,tipo])=>{const v=t[k]||0,vp=tp[k]||0,max=MAXIMO[k],hecho=tipo!=="max"&&llego(v,m),pasado=tipo==='max'?v>m:(max&&v>max),pasadoP=tipo==='max'?vp>m:(max&&vp>max);
+        if(tipo!=='max'&&max){const a=posBarra(v,m,max),bp=Math.max(0,posBarra(vp,m,max)-a),col=pasado?'var(--red)':hecho?'var(--accent)':'var(--blue)';
+          return `<div class="nut${hecho&&!pasado?' hecho':''}${pasado?' pasado':''}"><div class="row sp" style="flex-wrap:nowrap;gap:6px"><span class="nn">${pasado?'⚠️ ':hecho?'✓ ':''}${n}</span><span class="nv">${fmtMi(v)} / ${fmtMi(m)} ${u} <span style="opacity:.7">· máx ${fmtMi(max)}</span></span></div>
+            <div class="bar3"><i style="width:${a}%;background:${col}"></i>${hayPlan&&bp>0?`<i class="fan" style="width:${bp}%;background:${pasadoP?'var(--red)':'var(--accent)'}"></i>`:''}<b style="left:65%"></b><b style="left:95%" class="tope"></b></div></div>`;}
+        const pct=Math.min(100,v/m*100),pctP=Math.max(0,Math.min(100,vp/m*100)-pct);
         return `<div class="nut${hecho?' hecho':''}${pasado?' pasado':''}"><div class="row sp" style="flex-wrap:nowrap;gap:6px"><span class="nn">${hecho?'✓ ':pasado?'⚠️ ':''}${n}</span><span class="nv">${fmtMi(v)} / ${fmtMi(m)} ${u}</span></div>
           <div class="bar" style="height:6px;margin-top:4px"><i style="width:${pct}%;background:${tipo==='max'?(pasado?'var(--red)':'var(--muted)'):(hecho?'var(--accent)':'var(--blue)')}"></i>${hayPlan&&pctP>0?`<i class="fan" style="width:${pctP}%;background:${tipo==='max'?(vp>m?'var(--red)':'var(--muted)'):'var(--accent)'}"></i>`:''}</div></div>`;}).join('')}</div>`).join('')}
-    <div class="mu" style="margin-top:12px">Lo calcula Claude con cada comida que carga: es una estimación. Se tacha con ✓ cuando llegás a lo del día.${hayPlan?' Lo transparente es lo que sumaría el plan si lo cumplís.':''}</div>
+    <div class="mu" style="margin-top:12px">Lo calcula Claude con cada comida que carga: es una estimación. Se tacha con ✓ cuando llegás a lo del día. Las que tienen <b>máx</b> muestran dos rayitas: la meta y el tope; pasarse del tope puede hacer mal y se pone en rojo ⚠️.${hayPlan?' Lo transparente es lo que sumaría el plan si lo cumplís.':''}</div>
   </details>`;
 }
 let _nutriAbierto=true;
