@@ -110,6 +110,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .nut.pasado .nn{color:var(--red)}
 .detdia{margin-top:12px;border-top:1px solid var(--border);padding-top:6px;cursor:default}
 .detm{padding:8px 0;border-bottom:1px solid var(--border)}
+/* Arrastrar a la izquierda para borrar (comidas) */
+.desl{position:relative;overflow:hidden;touch-action:pan-y}
+.lista>div.desl{display:block;padding:0}
+.desl>.dcont{position:relative;z-index:1;background:var(--surface);transition:transform .2s ease}
+.lista>div.desl>.dcont{display:flex;align-items:center;gap:8px;padding:10px 0}
+.desl>.dbor{position:absolute;top:0;right:0;bottom:0;width:100%;min-height:0;border:none;border-radius:0;margin:0;background:var(--red);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding:0 18px}
+#toast button{margin-left:10px;min-height:36px}
 .deti{padding:6px 0 2px 10px}
 .consejo{margin:8px 0 2px;padding:8px 10px;border-radius:8px;font-size:.9rem;background:var(--surface2)}
 .consejo.sube{border-left:3px solid var(--accent)}.consejo.baja{border-left:3px solid var(--amber)}.consejo.igual{border-left:3px solid var(--blue)}
@@ -226,8 +233,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.28';
+const APP_VERSION='1.29';
 const APP_CAMBIOS=[
+  {v:'1.29',f:'19/11',h:'10:50',c:[{n:2,t:'Para borrar una comida, arrastrala hacia la izquierda: un poco muestra el botón rojo "🗑 Borrar", y si la arrastrás hasta la mitad se borra sola. Abajo aparece "Deshacer" por si te equivocaste. Anda en la lista de cada comida y en "ver qué comí".'}]},
   {v:'1.28',f:'15/11',h:'13:40',c:[{n:2,t:'Vitaminas y minerales: ahora muestran también el MÁXIMO por día (lo que pasado puede hacer mal). La barra tiene dos rayitas: la meta y el tope. Entre las dos está bien (verde); si te pasás del tope se pone en rojo con ⚠️.'}]},
   {v:'1.27',f:'13/11',h:'22:30',c:[{n:1,t:'Vitaminas y minerales ya no avisa "comida sin datos" por la creatina o el té (no tienen calorías).'}]},
   {v:'1.26',f:'09/11',h:'11:10',c:[{n:2,t:'Fotos: "Comparar", dos fotos lado a lado (antes y después) con el peso y la fecha de cada una, los días entre las dos y cuántos kilos bajaste. También se puede ver una sola, grande. Se elige con la tira de miniaturas.'}]},
@@ -308,6 +316,40 @@ const lista=o=>Object.entries(o||{}).map(([id,v])=>Object.assign({id},v));
 const nuevoId=()=>db?db.ref().push().key:('L'+Date.now()+Math.random().toString(36).slice(2,6));
 const editando=()=>{const a=document.activeElement;return a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);};
 let _toastT;
+// Arrastrar una comida a la izquierda: un poco deja ver "🗑 Borrar"; hasta la mitad la borra sola. Avisa con "Deshacer".
+const DESL_ANCHO=110;let _sw=null,_swClick=0;
+function cerrarDesl(salvo){document.querySelectorAll('.desl.abierto').forEach(d=>{if(d!==salvo){d.classList.remove('abierto');const c=d.querySelector('.dcont');if(c)c.style.transform='';}});}
+document.addEventListener('pointerdown',e=>{
+  const el=e.target.closest&&e.target.closest('.desl');cerrarDesl(el);
+  if(!el||e.target.closest('.dbor'))return;
+  _sw={el,c:el.querySelector('.dcont'),x0:e.clientX,y0:e.clientY,dx:0,on:false,base:el.classList.contains('abierto')?-DESL_ANCHO:0};
+},{passive:true});
+document.addEventListener('pointermove',e=>{
+  if(!_sw)return;const dx=e.clientX-_sw.x0,dy=e.clientY-_sw.y0;
+  if(!_sw.on){if(Math.abs(dx)>10&&Math.abs(dx)>Math.abs(dy)*1.5){_sw.on=true;_sw.c.style.transition='none';}else if(Math.abs(dy)>10){_sw=null;return;}else return;}
+  _sw.dx=dx;_sw.c.style.transform=`translateX(${Math.min(0,_sw.base+dx)}px)`;
+},{passive:true});
+function _finDesl(){
+  if(!_sw)return;const s=_sw;_sw=null;if(!s.on)return;_swClick=Date.now();
+  const x=Math.min(0,s.base+s.dx),w=s.el.offsetWidth;s.c.style.transition='';
+  if(x<-w*0.5){s.c.style.transform='translateX(-100%)';setTimeout(()=>borrarDesl(s.el),180);}
+  else if(x<-50){s.c.style.transform=`translateX(-${DESL_ANCHO}px)`;s.el.classList.add('abierto');}
+  else{s.c.style.transform='';s.el.classList.remove('abierto');}
+}
+document.addEventListener('pointerup',_finDesl);document.addEventListener('pointercancel',_finDesl);
+document.addEventListener('click',e=>{if(Date.now()-_swClick<350&&e.target.closest&&e.target.closest('.desl')&&!e.target.closest('.dbor')){e.stopPropagation();e.preventDefault();}},true);
+function borrarDesl(el){
+  const ruta=el&&el.dataset.del;if(!ruta)return;const [r,id]=ruta.split('/'),o=S[r]&&S[r][id];
+  if(!o){guardar(ruta,null);return;}
+  const copia=JSON.parse(JSON.stringify(o));delete copia.id;
+  guardar(ruta,null);
+  toastAccion('Borrado: '+nombreComida(copia),'Deshacer',()=>{guardar(ruta,copia);toast('Recuperado');});
+}
+function toastAccion(t,boton,fn,ms=6000){
+  const el=$('toast');el.textContent=t;const b=document.createElement('button');b.className='chico';b.textContent=boton;
+  b.onclick=()=>{clearTimeout(_toastT);el.style.display='none';fn();};el.appendChild(b);
+  el.className='ok';el.style.display='block';clearTimeout(_toastT);_toastT=setTimeout(()=>el.style.display='none',ms);
+}
 function toast(t,tipo='ok',ms=2600){const el=$('toast');el.textContent=t;el.className=tipo;el.style.display='block';clearTimeout(_toastT);_toastT=setTimeout(()=>el.style.display='none',ms);}
 
 // ── GUARDAR: todo pasa por acá. Primero queda en una cola en el teléfono y después sube a la base; si no hay
@@ -907,9 +949,9 @@ function htmlDetalleDia(f){
   if(!cs.length)return '<div class="mu" style="margin-top:10px">Todavía no cargaste nada este día.</div>';
   return `<div class="detdia">${MOMENTOS.map(([k,n,ic])=>{const g=cs.filter(c=>momentoDe(c)===k);if(!g.length)return '';const tk=totales(g);
     return `<div class="detm"><div class="row sp"><b>${ic} ${n}</b><span class="mu">${fmt(tk.kcal)} cal · P ${fmt(tk.p)} g</span></div>
-      ${g.map(c=>{const pc=t.kcal?Math.round((num(c.kcal)||0)/t.kcal*100):0;return `<div class="deti"><div class="row sp" style="flex-wrap:nowrap;gap:8px;align-items:flex-start"><span style="flex:1;min-width:0">${esc(nombreComida(c))}</span><b style="white-space:nowrap;flex:none">${fmt(num(c.kcal))} cal</b></div>
+      ${g.map(c=>{const pc=t.kcal?Math.round((num(c.kcal)||0)/t.kcal*100):0;return `<div class="desl" data-del="comidas/${c.id}"><button class="dbor" onclick="borrarDesl(this.parentNode)">🗑 Borrar</button><div class="dcont deti"><div class="row sp" style="flex-wrap:nowrap;gap:8px;align-items:flex-start"><span style="flex:1;min-width:0">${esc(nombreComida(c))}</span><b style="white-space:nowrap;flex:none">${fmt(num(c.kcal))} cal</b></div>
         <div class="row sp" style="flex-wrap:nowrap"><span class="mu" style="font-size:.78rem">P ${fmt(num(c.p))} · C ${fmt(num(c.c))} · G ${fmt(num(c.g))}</span><span class="mu" style="font-size:.78rem">${pc}%</span></div>
-        <div class="bar" style="height:4px;margin-top:3px"><i style="width:${pc}%"></i></div></div>`;}).join('')}</div>`;}).join('')}
+        <div class="bar" style="height:4px;margin-top:3px"><i style="width:${pc}%"></i></div></div></div>`;}).join('')}</div>`;}).join('')}
     <div class="row sp" style="padding-top:8px;gap:4px"><b>Total</b><b style="font-size:.92rem">${fmt(t.kcal)} cal · P ${fmt(t.p)} · C ${fmt(t.c)} · G ${fmt(t.g)}</b></div></div>`;
 }
 function htmlCalMacros(t,click,tp,f){
@@ -954,7 +996,7 @@ function pDieta(){
       <button class="chico ${agregarEn===k?'':'agr'}" onclick="agregarEn=agregarEn==='${k}'?'':'${k}';pintar()">${agregarEn===k?'Cerrar':'+ Agregar'}</button></div>
     ${fz.length?`<div class="lista">${fz.map(x=>`<div><span class="gr fantasma">${esc(x.n)}<span class="plantag">plan</span><br><span class="mu">${fmt(num(x.kcal))} cal · P ${fmt(num(x.p))} · C ${fmt(num(x.c))} · G ${fmt(num(x.g))}</span></span><button class="chico" style="min-height:44px" onclick="comerPlan('${f}',${x.i})" aria-label="Comí esto">✓</button></div>`).join('')}</div>
       ${fz.length>1?`<button class="chico" style="width:100%;margin-top:6px;min-height:44px" onclick="comerPlan('${f}','${k}')">✓ Comí todo esto</button>`:''}`:''}
-    ${g.length?`<div class="lista">${g.map(c=>`<div><span class="gr">${esc(nombreComida(c))}<br><span class="mu">${fmt(num(c.kcal))} cal · P ${fmt(num(c.p))} · C ${fmt(num(c.c))} · G ${fmt(num(c.g))}</span></span><button class="x" onclick="borrar('comidas/${c.id}','¿Borrar ${esc(nombreComida(c)).replace(/'/g,'')}?')" aria-label="Borrar">✕</button></div>`).join('')}</div>`:''}
+    ${g.length?`<div class="lista">${g.map(c=>`<div class="desl" data-del="comidas/${c.id}"><button class="dbor" onclick="borrarDesl(this.parentNode)">🗑 Borrar</button><div class="dcont"><span class="gr">${esc(nombreComida(c))}<br><span class="mu">${fmt(num(c.kcal))} cal · P ${fmt(num(c.p))} · C ${fmt(num(c.c))} · G ${fmt(num(c.g))}</span></span><button class="x" onclick="borrar('comidas/${c.id}','¿Borrar ${esc(nombreComida(c)).replace(/'/g,'')}?')" aria-label="Borrar">✕</button></div></div>`).join('')}</div>`:''}
     ${agregarEn===k?`<div style="margin-top:10px">
       ${fr.length?`<div class="mu" style="margin-bottom:6px">Con un toque</div><div class="row" style="margin-bottom:10px">${fr.map(c=>`<button class="chip" onclick="repetirComida('${c.id}','${k}')">${esc(nombreComida(c))}</button>`).join('')}</div>`:''}
       <label for="c-n">Qué comiste</label><input id="c-n" placeholder="Pollo con arroz">
