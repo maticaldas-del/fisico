@@ -143,14 +143,25 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .card.ejok b{color:var(--accent)}
 body.flash::after{content:'';position:fixed;inset:0;z-index:250;pointer-events:none;background:var(--accent);animation:flash .5s steps(2,start) infinite}
 @keyframes flash{to{opacity:0}}
-.cmpwrap{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cmpwrap{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin:0 -14px}
 .cmpwrap.uno{grid-template-columns:1fr}
-.cmp{position:relative;border-radius:10px;overflow:hidden;border:2px solid transparent;cursor:pointer;background:var(--surface2)}
-.cmp.sel{border-color:var(--accent)}
-.cmp img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
-.cmpwrap.uno .cmp img{aspect-ratio:auto;max-height:70vh;object-fit:contain}
-.cmpd{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 6px;background:linear-gradient(transparent,rgba(0,0,0,.8));display:flex;flex-direction:column;align-items:center;color:#fff}
-.cmpd b{font-size:1.1rem}.cmpd span{font-size:.8rem}
+.cmp{position:relative;cursor:pointer;background:var(--bg)}
+.cmpf{overflow:hidden;aspect-ratio:2/3;background:#000;position:relative}
+.cmpwrap.uno .cmpf{aspect-ratio:3/4}
+.cmp img{width:100%;height:100%;object-fit:cover;display:block;transform-origin:50% 38%;transition:transform .2s}
+.cmp.sel .cmpf::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--accent)}
+.cmpd{display:flex;flex-direction:column;align-items:center;padding:8px 4px 2px;text-align:center}
+.cmpd b{font-size:1.15rem}.cmpd span{font-size:.82rem;color:var(--muted)}
+.cmp.sel .cmpd b{color:var(--accent)}
+.cmpbar{display:flex;justify-content:center;gap:8px;margin:10px 0 4px;flex-wrap:wrap}
+.cmpbar .grupo{display:flex;background:var(--surface2);border-radius:999px;padding:3px;gap:2px}
+.cmpbar .grupo button{min-width:52px;min-height:40px;border:none;border-radius:999px;background:transparent;color:var(--muted);font-size:1.05rem}
+.cmpbar .grupo button.on{background:var(--border2);color:var(--text)}
+#f-comp.full{position:fixed;inset:0;z-index:150;background:var(--bg);overflow-y:auto;padding:calc(8px + env(safe-area-inset-top)) 0 calc(16px + env(safe-area-inset-bottom))}
+#f-comp.full>.card{border:none;background:transparent;margin:0;padding:0 14px}
+#f-comp.full .cmpf{aspect-ratio:auto;height:68vh}
+#f-comp.full .cmpwrap.uno .cmpf{height:72vh}
+#f-comp.full .tira img{width:72px;height:96px}
 .tira{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
 .tira img{width:64px;height:84px;object-fit:cover;border-radius:6px;flex:none;cursor:pointer;opacity:.6;border:2px solid transparent}
 .tira img.on{opacity:1;border-color:var(--accent)}
@@ -233,8 +244,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.29';
+const APP_VERSION='1.30';
 const APP_CAMBIOS=[
+  {v:'1.30',f:'19/11',h:'21:15',c:[{n:2,t:'Comparar fotos como en MyFitnessPal: las fotos van de borde a borde, más altas, con el peso y la fecha abajo. Botones − y ＋ para acercar las dos a la vez (se ve más el cuerpo) y "⛶ Pantalla completa" para verlas grandes.'}]},
   {v:'1.29',f:'19/11',h:'10:50',c:[{n:2,t:'Para borrar una comida, arrastrala hacia la izquierda: un poco muestra el botón rojo "🗑 Borrar", y si la arrastrás hasta la mitad se borra sola. Abajo aparece "Deshacer" por si te equivocaste. Anda en la lista de cada comida y en "ver qué comí".'}]},
   {v:'1.28',f:'15/11',h:'13:40',c:[{n:2,t:'Vitaminas y minerales: ahora muestran también el MÁXIMO por día (lo que pasado puede hacer mal). La barra tiene dos rayitas: la meta y el tope. Entre las dos está bien (verde); si te pasás del tope se pone en rojo con ⚠️.'}]},
   {v:'1.27',f:'13/11',h:'22:30',c:[{n:1,t:'Vitaminas y minerales ya no avisa "comida sin datos" por la creatina o el té (no tienen calorías).'}]},
@@ -1038,19 +1050,24 @@ let compA=null,compB=null,compLado='B',compModo=2;
 const ordFotos=()=>lista(S.fotos).sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:(a.t||0)-(b.t||0));
 function pesoDeFecha(f){const ps=pesosOrd().filter(p=>p.f<=f);const u=ps[ps.length-1];if(!u)return null;const dias=(new Date(f+'T12:00:00')-new Date(u.f+'T12:00:00'))/864e5;return dias<=7?u:null;}
 function cargarFull(id,cb){if(fullCache[id])return cb(fullCache[id]);if(!db)return;db.ref(RAIZ+'/fotosFull/'+id).once('value').then(s=>{if(s.val()){fullCache[id]=s.val();cb(s.val());}}).catch(()=>{});}
+let compZoom=1,compFull=false;
+function zoomComp(d){compZoom=Math.max(1,Math.min(2.4,Math.round((compZoom+d)*100)/100));document.querySelectorAll('#f-comp .cmp img').forEach(im=>im.style.transform=`scale(${compZoom})`);const z=$('cmp-zoom');if(z)z.textContent=Math.round(compZoom*100)+'%';}
+function fullComp(on){compFull=on;const el=$('f-comp');if(el)el.classList.toggle('full',on);document.body.style.overflow=on?'hidden':'';pintarComparar();if(on&&el)el.scrollTop=0;}
 function pintarComparar(){
   const el=$('f-comp');if(!el)return;const fs=ordFotos();
   if(fs.length<2){el.innerHTML='';return;}
   if(!compA||!S.fotos[compA])compA=fs[0].id;if(!compB||!S.fotos[compB])compB=fs[fs.length-1].id;
   const lado=(id,k,tit)=>{const x=Object.assign({id},S.fotos[id]),p=pesoDeFecha(x.f);
-    return `<div class="cmp${compLado===k&&compModo===2?' sel':''}" onclick="compLado='${k}';pintarComparar()"><img id="cmp-${k}" src="${fullCache[id]||x.mini}" alt="${tit}">
-      <div class="cmpd"><b>${p?fmtKg(num(p.kg))+' kg':'– kg'}</b><span>${x.f.slice(8)}/${x.f.slice(5,7)}/${x.f.slice(0,4)}</span><span class="mu" style="font-size:.7rem">${tit}</span></div></div>`;};
+    return `<div class="cmp${compLado===k&&compModo===2?' sel':''}" onclick="compLado='${k}';pintarComparar()"><div class="cmpf"><img id="cmp-${k}" src="${fullCache[id]||x.mini}" alt="${tit}" style="transform:scale(${compZoom})"></div>
+      <div class="cmpd"><b>${p?fmtKg(num(p.kg))+' kg':'– kg'}</b><span>${+x.f.slice(8)} ${['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][+x.f.slice(5,7)-1]} ${x.f.slice(0,4)}</span>${tit?`<span style="font-size:.72rem">${tit}</span>`:''}</div></div>`;};
   const a=S.fotos[compA],b=S.fotos[compB],pa=pesoDeFecha(a.f),pb=pesoDeFecha(b.f);
   const dif=pa&&pb?num(pb.kg)-num(pa.kg):null,dias=Math.round((new Date(b.f+'T12:00:00')-new Date(a.f+'T12:00:00'))/864e5);
-  el.innerHTML=`<div class="card"><div class="row sp" style="flex-wrap:nowrap;margin-bottom:8px"><h2 style="margin:0">🔍 Comparar</h2>
-      <div class="row" style="gap:4px;flex-wrap:nowrap"><button class="chip ${compModo===1?'on':''}" onclick="compModo=1;compLado='B';pintarComparar()" aria-label="Una foto">▢</button><button class="chip ${compModo===2?'on':''}" onclick="compModo=2;pintarComparar()" aria-label="Dos fotos">◫</button></div></div>
+  el.classList.toggle('full',compFull);
+  el.innerHTML=`<div class="card"><div class="row sp" style="flex-wrap:nowrap;margin-bottom:10px">${compFull?`<button class="chico" onclick="fullComp(false)" aria-label="Volver" style="min-width:44px">←</button><h2 style="margin:0">Progreso</h2><span style="width:44px"></span>`:`<h2 style="margin:0">🔍 Comparar</h2><button class="chico" onclick="fullComp(true)">⛶ Pantalla completa</button>`}</div>
     <div class="cmpwrap${compModo===1?' uno':''}">${compModo===2?lado(compA,'A','Antes'):''}${lado(compB,'B',compModo===2?'Después':'')}</div>
-    ${compModo===2&&dif!=null?`<div class="mu" style="text-align:center;margin-top:6px">${dias} días · ${Math.abs(dif)<0.05?'<b>mismo peso</b>':`<b style="color:${dif<0?'var(--accent)':'var(--amber)'}">${dif<0?'▼':'▲'} ${fmtKg(Math.abs(dif))} kg</b>`}</div>`:''}
+    ${compModo===2&&dif!=null?`<div class="mu" style="text-align:center;margin-top:4px">${dias} días · ${Math.abs(dif)<0.05?'<b>mismo peso</b>':`<b style="color:${dif<0?'var(--accent)':'var(--amber)'}">${dif<0?'▼':'▲'} ${fmtKg(Math.abs(dif))} kg</b>`}</div>`:''}
+    <div class="cmpbar"><div class="grupo"><button class="${compModo===1?'on':''}" onclick="compModo=1;compLado='B';pintarComparar()" aria-label="Una foto">▢</button><button class="${compModo===2?'on':''}" onclick="compModo=2;pintarComparar()" aria-label="Dos fotos">◫</button></div>
+      <div class="grupo"><button onclick="zoomComp(-0.2)" aria-label="Alejar">−</button><button id="cmp-zoom" onclick="compZoom=1;zoomComp(0)" aria-label="Tamaño normal" style="font-size:.8rem">${Math.round(compZoom*100)}%</button><button onclick="zoomComp(0.2)" aria-label="Acercar">＋</button></div></div>
     <div class="mu" style="font-size:.78rem;margin:8px 0 4px">${compModo===2?`Tocá <b>${compLado==='A'?'Antes':'Después'}</b> (marcada) y elegí abajo la foto:`:'Elegí la foto:'}</div>
     <div class="tira">${fs.map(x=>`<img src="${x.mini}" class="${x.id===compA&&compModo===2||x.id===compB?'on':''}" onclick="${compModo===1?'compB':(compLado==='A'?'compA':'compB')}='${x.id}';pintarComparar()" alt="Foto ${fechaLinda(x.f)}">`).join('')}</div></div>`;
   for(const [k,id] of [['A',compA],['B',compB]])cargarFull(id,src=>{const im=$('cmp-'+k);if(im&&(k==='A'?compA:compB)===id)im.src=src;});
