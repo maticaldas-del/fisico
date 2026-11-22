@@ -254,8 +254,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.35';
+const APP_VERSION='1.36';
 const APP_CAMBIOS=[
+  {v:'1.36',f:'22/11',h:'15:45',c:[{n:3,t:'El aviso del descanso ahora suena aunque estés en otra app (por ejemplo Instagram) o con la pantalla bloqueada (modo Fuerte). Mientras descansás la música se corta; si preferís que no, en Ajustes elegí Suave (pero sólo suena con la app abierta).'}]},
   {v:'1.35',f:'22/11',h:'15:25',c:[{n:3,t:'El aviso de fin del descanso ahora suena aunque el iPhone esté en silencio (modo Fuerte). En Ajustes → 🔔 Aviso del descanso podés elegir Fuerte o Suave (se mezcla con la música, pero en silencio no suena) y probar el sonido.'}]},
   {v:'1.34',f:'22/11',h:'15:05',c:[{n:2,t:'El récord histórico ahora es la serie que más kilos movió: peso × repeticiones (10 reps con 10 kg = 100 kg le gana a 6 reps con 12 kg = 72 kg). Se ve así: "10 kg × 10 = 100 kg".'}]},
   {v:'1.33',f:'22/11',h:'14:45',c:[{n:3,t:'Entreno: tocando el nombre de un ejercicio se abre su historial completo (gráfico, todas las veces, series y descansos). Arriba de repeticiones y peso aparece tu 🏆 récord histórico, y tocándolo se pone solo. Se guarda el descanso de cada serie, tu peso del día, kilos totales y récords. Si batís tu récord te avisa. Al terminar podés poner cómo te sentiste y una nota. Si te olvidás de tocar Terminar, se cierra solo al otro día con la hora real.'}]},
@@ -863,6 +864,22 @@ function desbloquearBeep(){try{if(!_beepEl){_beepEl=new Audio(wavBeep());_beepEl
 function pitar(){const fuerte=modoSonido()==='fuerte';sesionAudio(fuerte?'playback':'ambient');let ok=false;
   try{if(_beepEl&&_beepOk){_beepEl.muted=false;_beepEl.volume=1;_beepEl.currentTime=0;const pr=_beepEl.play();ok=true;if(pr&&pr.catch)pr.catch(()=>beepWebAudio());}}catch(_){}
   if(!ok)beepWebAudio();}
+// Modo Fuerte: durante el descanso suena un audio "mudo" que al final trae los pitidos. Como es un audio que se está reproduciendo,
+// el iPhone lo deja seguir aunque él esté en otra app (Instagram) o con la pantalla bloqueada, y los pitidos llegan a tiempo.
+let _largo=null,_largoUrl=null;
+function wavLargo(seg){const sr=8000,n=Math.ceil((seg+20)*sr),b=new Uint8Array(44+n),dv=new DataView(b.buffer);const w=(o,t)=>{for(let i=0;i<t.length;i++)b[o+i]=t.charCodeAt(i);};
+  w(0,'RIFF');dv.setUint32(4,36+n,true);w(8,'WAVEfmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,sr,true);dv.setUint32(28,sr,true);dv.setUint16(32,1,true);dv.setUint16(34,8,true);w(36,'data');dv.setUint32(40,n,true);
+  b.fill(128,44);
+  for(let r=0;r<13;r++)for(let k=0;k<3;k++){const t0=seg+r*1.5+k*0.33,f=k%2?1175:880,i0=Math.floor(t0*sr),i1=Math.min(n,Math.floor((t0+0.25)*sr));
+    for(let i=i0;i<i1;i++){const t=i/sr,env=Math.min(1,(t-t0)/0.01,(t0+0.25-t)/0.02);b[44+i]=Math.round(128+(Math.sin(2*Math.PI*f*t)>=0?1:-1)*env*0.9*127);}}
+  return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));}
+function sonarDescansoLargo(seg){pararLargo();if(modoSonido()!=='fuerte'||!(seg>0))return;
+  try{sesionAudio('playback');_largoUrl=wavLargo(Math.round(seg));const a=new Audio(_largoUrl);a.volume=1;_largo=a;a.onended=()=>{pararLargo();sesionAudio('ambient');};
+    a.play().catch(()=>{});
+    if('mediaSession' in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'⏱️ Descanso',artist:'Físico · suena cuando termina'});navigator.mediaSession.setActionHandler('pause',()=>cortarDescanso());}catch(_){}}
+  }catch(_){}}
+function pararLargo(){try{if(_largo){_largo.onended=null;_largo.pause();_largo.removeAttribute('src');_largo.load();}}catch(_){}if(_largoUrl){try{URL.revokeObjectURL(_largoUrl);}catch(_){}}_largo=null;_largoUrl=null;}
+const largoSonando=()=>!!(_largo&&!_largo.paused);
 function probarSonido(){prepararAudio();try{if(!_beepEl){_beepEl=new Audio(wavBeep());_beepEl.preload='auto';}_beepOk=true;}catch(_){}pitar();setTimeout(()=>sesionAudio('ambient'),1500);}
 function pedirPantalla(){try{if(navigator.wakeLock&&!_wake&&document.visibilityState==='visible')navigator.wakeLock.request('screen').then(w=>{_wake=w;w.addEventListener('release',()=>{_wake=null;});}).catch(()=>{});}catch(_){}}
 function soltarPantalla(){try{_wake&&_wake.release();}catch(_){}_wake=null;}
@@ -872,15 +889,15 @@ function avisarFondo(){try{if(document.visibilityState==='visible'||!('Notificat
 function guardarDesc(){try{_descFin?localStorage.setItem(DESC_KEY,String(_descFin)):localStorage.removeItem(DESC_KEY);}catch(_){}}
 function correrDescanso(){clearInterval(_descInt);_descInt=setInterval(tickDescanso,250);tickDescanso();}
 function empezarDescanso(seg){
-  prepararAudio();desbloquearBeep();_sonado=false;_descFin=Date.now()+seg*1000;guardarDesc();pedirPantalla();correrDescanso();
+  prepararAudio();desbloquearBeep();sonarDescansoLargo(seg);_sonado=false;_descFin=Date.now()+seg*1000;guardarDesc();pedirPantalla();correrDescanso();
   try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().catch(()=>{});}catch(_){}
 }
-function sumarDescanso(s){if(!_descFin)return;const base=_sonado?Date.now():_descFin;_sonado=false;_descFin=Math.max(Date.now()+1000,base+s*1000);guardarDesc();pedirPantalla();tickDescanso();}
-function cortarDescanso(){pararAlarma();_descFin=0;_sonado=false;clearInterval(_descInt);_descInt=null;guardarDesc();soltarPantalla();tickDescanso();}
+function sumarDescanso(s){if(!_descFin)return;const base=_sonado?Date.now():_descFin;_sonado=false;pararAlarma();_descFin=Math.max(Date.now()+1000,base+s*1000);guardarDesc();pedirPantalla();sonarDescansoLargo((_descFin-Date.now())/1000);tickDescanso();}
+function cortarDescanso(){pararAlarma();pararLargo();sesionAudio('ambient');_descFin=0;_sonado=false;clearInterval(_descInt);_descInt=null;guardarDesc();soltarPantalla();tickDescanso();}
 // Alarma fuerte: pita cada 1,5 s durante 20 s y la pantalla parpadea en verde, hasta que toque la pantalla.
 let _alarmaInt=null;
-function alarma(){pararAlarma();document.body.classList.add('flash');pitar();let n=0;_alarmaInt=setInterval(()=>{pitar();if(++n>=13)pararAlarma();},1500);}
-function pararAlarma(){const sonaba=!!_alarmaInt;clearInterval(_alarmaInt);_alarmaInt=null;document.body.classList.remove('flash');try{_beepEl&&_beepEl.pause();}catch(_){}if(sonaba)setTimeout(()=>sesionAudio('ambient'),300);}
+function alarma(){pararAlarma();document.body.classList.add('flash');const lg=largoSonando();if(!lg)pitar();let n=0;_alarmaInt=setInterval(()=>{if(!lg)pitar();if(++n>=13)pararAlarma();},1500);}
+function pararAlarma(){const sonaba=!!_alarmaInt;clearInterval(_alarmaInt);_alarmaInt=null;document.body.classList.remove('flash');try{_beepEl&&_beepEl.pause();}catch(_){}if(sonaba){pararLargo();setTimeout(()=>sesionAudio('ambient'),300);}}
 document.addEventListener('pointerdown',()=>{if(_alarmaInt)pararAlarma();},true);
 function tickDescanso(){
   const el=$('descanso');if(!el)return;
@@ -1271,9 +1288,9 @@ function pAjustes(){
   </div><button class="pri" style="width:100%;margin-top:10px" onclick="guardarMetas()">Guardar metas</button></div>
   <div class="card"><h2>🔔 Aviso del descanso</h2>
     <div class="row" style="gap:6px">${[['fuerte','🔊 Fuerte'],['suave','🎵 Suave']].map(([k,n])=>`<button class="chip ${modoSonido()===k?'on':''}" onclick="ponerModoSonido('${k}')">${n}</button>`).join('')}</div>
-    <div class="mu" style="margin-top:8px;font-size:.88rem">${modoSonido()==='fuerte'?'<b>Fuerte:</b> suena aunque tengas el teléfono en silencio. Si estás escuchando música, la corta mientras suena (después la volvés a poner).':'<b>Suave:</b> suena encima de la música sin cortarla, pero <b>si el teléfono está en silencio no suena</b>.'}</div>
+    <div class="mu" style="margin-top:8px;font-size:.88rem">${modoSonido()==='fuerte'?'<b>Fuerte:</b> suena aunque estés en otra app (Instagram), con la pantalla bloqueada o con el teléfono en silencio. Para lograrlo, durante el descanso la app "reproduce" un audio mudo: <b>si estás escuchando música, se corta mientras descansás</b> (después la volvés a poner). Si en el descanso mirás un video con sonido, ese video le gana y el aviso puede no sonar.':'<b>Suave:</b> no corta la música, pero <b>sólo suena con la app abierta en la pantalla</b> y con el teléfono sin silencio.'}</div>
     <button style="margin-top:10px" onclick="probarSonido()">🔊 Probar sonido</button>
-    <div class="mu" style="margin-top:8px;font-size:.82rem">Importante: dejá la app abierta en la pantalla mientras descansás. Si el teléfono se bloquea o pasás a otra app, no puede sonar a tiempo (la pantalla se mantiene prendida sola durante el descanso).</div></div>
+    <div class="mu" style="margin-top:8px;font-size:.82rem">Durante el descanso, en la pantalla bloqueada aparece "⏱️ Descanso" como si fuera una canción: si lo pausás desde ahí, se corta el descanso.</div></div>
   <div class="card"><h2>Sesión</h2><div class="mu">${esc(usuario&&usuario.email||'')}</div><button style="margin-top:8px" onclick="salir()">Cerrar sesión</button></div>
   ${htmlCambios(30)}
   <details class="card"><summary>📥 Cargar datos (lo usa Claude)</summary>
