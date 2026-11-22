@@ -64,6 +64,8 @@ Subir cada cambio a `main` con un mensaje claro.
   carpeta `worker`, nombre `fisico-avisos`). Al anotar una serie la app hace POST `/programar` {dev, sub, en: segundos};
   el servicio pone una alarma y manda un Web Push cifrado (RFC 8291 + VAPID). `/cancelar` si toca Listo o si la app está
   abierta cuando termina. `/probar` manda uno ya. `/vapid` da la llave pública.
+- 22/11: la app NO hace ningún sonido ("no quiero que se salga por nada la música": cualquier audio de la página le corta
+  la música en el iPhone). `SIN_SONIDO=true` en index.html. El aviso es sólo la notificación + la pantalla que parpadea.
 - SIN claves en el repositorio: las llaves VAPID se crean solas la primera vez adentro del servicio (Durable Object "llaves").
 - La dirección del servicio va en `config.avisosUrl` (no es secreta). En el teléfono: Ajustes → 🔔 Aviso del descanso →
   Activar notificaciones (en iPhone, sólo con la app agregada a la pantalla de inicio y abierta desde ahí).
