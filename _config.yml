@@ -2,3 +2,5 @@
 exclude:
   - CLAUDE.md
   - README.md
+  - worker
+  - tools

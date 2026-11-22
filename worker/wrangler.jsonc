@@ -1,0 +1,11 @@
+// Servicio de avisos de Físico (notificación al terminar el descanso). Se publica solo en Cloudflare
+// desde este repositorio (carpeta "worker"). No tiene claves: las llaves se crean solas adentro del servicio.
+{
+  "name": "fisico-avisos",
+  "main": "src/index.js",
+  "compatibility_date": "2025-06-01",
+  "durable_objects": {
+    "bindings": [{ "name": "AVISOS", "class_name": "Avisos" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Avisos"] }]
+}

@@ -254,8 +254,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.36';
+const APP_VERSION='1.37';
 const APP_CAMBIOS=[
+  {v:'1.37',f:'22/11',h:'16:20',c:[{n:3,t:'Notificación de verdad al terminar el descanso, aunque estés en Instagram o con la app cerrada. Se activa en Ajustes → 🔔 Aviso del descanso → Activar notificaciones (en iPhone, con la app en la pantalla de inicio).'}]},
   {v:'1.36',f:'22/11',h:'15:45',c:[{n:3,t:'El aviso del descanso ahora suena aunque estés en otra app (por ejemplo Instagram) o con la pantalla bloqueada (modo Fuerte). Mientras descansás la música se corta; si preferís que no, en Ajustes elegí Suave (pero sólo suena con la app abierta).'}]},
   {v:'1.35',f:'22/11',h:'15:25',c:[{n:3,t:'El aviso de fin del descanso ahora suena aunque el iPhone esté en silencio (modo Fuerte). En Ajustes → 🔔 Aviso del descanso podés elegir Fuerte o Suave (se mezcla con la música, pero en silencio no suena) y probar el sonido.'}]},
   {v:'1.34',f:'22/11',h:'15:05',c:[{n:2,t:'El récord histórico ahora es la serie que más kilos movió: peso × repeticiones (10 reps con 10 kg = 100 kg le gana a 6 reps con 12 kg = 72 kg). Se ve así: "10 kg × 10 = 100 kg".'}]},
@@ -880,6 +881,59 @@ function sonarDescansoLargo(seg){pararLargo();if(modoSonido()!=='fuerte'||!(seg>
   }catch(_){}}
 function pararLargo(){try{if(_largo){_largo.onended=null;_largo.pause();_largo.removeAttribute('src');_largo.load();}}catch(_){}if(_largoUrl){try{URL.revokeObjectURL(_largoUrl);}catch(_){}}_largo=null;_largoUrl=null;}
 const largoSonando=()=>!!(_largo&&!_largo.paused);
+// ── NOTIFICACIÓN DEL DESCANSO (servicio de avisos en Cloudflare, carpeta worker/ del repositorio) ──
+// Al anotar una serie le pide al servicio "avisame en X segundos"; el servicio manda una notificación de verdad al
+// teléfono aunque la app esté cerrada o él esté en Instagram. Si la app está abierta cuando termina, se cancela
+// (ya suena y parpadea acá). En iPhone sólo anda con la app agregada a la pantalla de inicio.
+const PUSH_KEY='fisico_push_v1',DEV_KEY='fisico_dev_v1';
+const avisosUrl=()=>String((S.config||{}).avisosUrl||'').replace(/\/+$/,'');
+function devId(){try{let d=localStorage.getItem(DEV_KEY);if(!d){d=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2,12));localStorage.setItem(DEV_KEY,d);}return d;}catch(_){return 'sin-id-guardado';}}
+const subPush=()=>{try{return JSON.parse(localStorage.getItem(PUSH_KEY)||'null');}catch(_){return null;}};
+const pushListo=()=>!!(avisosUrl()&&subPush()&&'Notification' in window&&Notification.permission==='granted');
+const esInstalada=()=>{try{return navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;}catch(_){return false;}};
+const esIphone=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function llamarAvisos(ruta,datos){const u=avisosUrl();if(!u)return Promise.resolve(null);
+  return fetch(u+ruta,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(Object.assign({dev:devId()},datos)),keepalive:true}).then(r=>r.json()).catch(()=>null);}
+function programarPush(seg){if(!pushListo()||!(seg>0))return;const s=Math.round(seg);
+  llamarAvisos('/programar',{sub:subPush(),en:s+2,titulo:'💪 ¡A la próxima serie!',cuerpo:'Terminó el descanso ('+mmss(s)+').'});}
+function cancelarPush(){if(pushListo())llamarAvisos('/cancelar',{});}
+const b64aBytes=t=>Uint8Array.from(atob(t.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((t.length+3)%4)),c=>c.charCodeAt(0));
+async function activarPush(){
+  try{
+    if(!avisosUrl()){toast('Falta conectar el servicio de avisos (lo hace Claude)','err',5000);return;}
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window)){
+      toast(esIphone()&&!esInstalada()?'Primero agregá la app a la pantalla de inicio y abrila desde ahí':'Este navegador no deja recibir notificaciones','err',6000);return;}
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){toast('No diste permiso. Activalo en Ajustes del iPhone → Notificaciones → Físico','err',7000);pintar();return;}
+    const reg=await navigator.serviceWorker.ready;
+    const r=await fetch(avisosUrl()+'/vapid').then(x=>x.json());
+    let sub=await reg.pushManager.getSubscription();
+    if(sub){const k=sub.options&&sub.options.applicationServerKey;const kk=k?btoa(String.fromCharCode(...new Uint8Array(k))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''):'';if(kk&&kk!==r.key){await sub.unsubscribe();sub=null;}}
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64aBytes(r.key)});
+    localStorage.setItem(PUSH_KEY,JSON.stringify(sub.toJSON()));
+    // Con la notificación, ya no hace falta el audio mudo (que corta la música): pasa a Suave.
+    try{localStorage.setItem(SON_KEY,'suave');}catch(_){}
+    const t=await llamarAvisos('/probar',{sub:sub.toJSON(),titulo:'✅ Notificaciones activadas',cuerpo:'Cuando termine el descanso te va a llegar un aviso así.'});
+    toast(t&&t.ok?'✅ Listo: te mandé una notificación de prueba':'Se activó, pero la prueba no llegó ('+(t?t.estado:'sin respuesta')+')',t&&t.ok?'ok':'err',6000);
+  }catch(e){toast('No se pudo activar: '+(e&&e.message||e),'err',7000);}
+  pintar();
+}
+function probarPush(){if(!pushListo()){toast('Primero activá las notificaciones','err');return;}
+  llamarAvisos('/probar',{sub:subPush(),titulo:'🔔 Prueba',cuerpo:'Así te llega el aviso del descanso.'}).then(t=>toast(t&&t.ok?'Enviada: debería llegarte ahora':'No llegó ('+(t?t.estado:'sin respuesta')+')',t&&t.ok?'ok':'err',5000));}
+async function desactivarPush(){try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe();}catch(_){}
+  cancelarPush();try{localStorage.removeItem(PUSH_KEY);}catch(_){}toast('Notificaciones desactivadas en este teléfono');pintar();}
+function htmlPush(){
+  const sop='PushManager' in window&&'Notification' in window,inst=esInstalada();
+  let estado;
+  if(!avisosUrl())estado='<div class="mu">Falta conectar el servicio de avisos: lo hace Claude.</div>';
+  else if(pushListo())estado=`<div style="margin-bottom:8px">✅ <b>Activadas en este teléfono.</b> Al terminar el descanso te llega una notificación aunque estés en otra app.</div>
+    <div class="row" style="gap:6px"><button onclick="probarPush()">🔔 Probar notificación</button><button class="chico peligro" onclick="desactivarPush()">Desactivar</button></div>`;
+  else if(esIphone()&&!inst)estado=`<div class="mu">En iPhone las notificaciones sólo andan con la app <b>en la pantalla de inicio</b>: en Safari tocá <b>Compartir</b> (el cuadrado con la flecha) → <b>Agregar a inicio</b>, abrila desde ese ícono y volvé acá.</div>`;
+  else if(!sop)estado='<div class="mu">Este navegador no deja recibir notificaciones.</div>';
+  else if('Notification' in window&&Notification.permission==='denied')estado='<div class="mu">Las notificaciones están bloqueadas. En el iPhone: Ajustes → Notificaciones → Físico → Permitir.</div>';
+  else estado=`<button class="pri" style="width:100%" onclick="activarPush()">🔔 Activar notificaciones</button>`;
+  return `<div style="margin-bottom:14px"><div style="font-weight:700;margin-bottom:6px">Notificación al terminar el descanso</div>${estado}</div>`;
+}
 function probarSonido(){prepararAudio();try{if(!_beepEl){_beepEl=new Audio(wavBeep());_beepEl.preload='auto';}_beepOk=true;}catch(_){}pitar();setTimeout(()=>sesionAudio('ambient'),1500);}
 function pedirPantalla(){try{if(navigator.wakeLock&&!_wake&&document.visibilityState==='visible')navigator.wakeLock.request('screen').then(w=>{_wake=w;w.addEventListener('release',()=>{_wake=null;});}).catch(()=>{});}catch(_){}}
 function soltarPantalla(){try{_wake&&_wake.release();}catch(_){}_wake=null;}
@@ -889,11 +943,11 @@ function avisarFondo(){try{if(document.visibilityState==='visible'||!('Notificat
 function guardarDesc(){try{_descFin?localStorage.setItem(DESC_KEY,String(_descFin)):localStorage.removeItem(DESC_KEY);}catch(_){}}
 function correrDescanso(){clearInterval(_descInt);_descInt=setInterval(tickDescanso,250);tickDescanso();}
 function empezarDescanso(seg){
-  prepararAudio();desbloquearBeep();sonarDescansoLargo(seg);_sonado=false;_descFin=Date.now()+seg*1000;guardarDesc();pedirPantalla();correrDescanso();
+  prepararAudio();desbloquearBeep();sonarDescansoLargo(seg);programarPush(seg);_sonado=false;_descFin=Date.now()+seg*1000;guardarDesc();pedirPantalla();correrDescanso();
   try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().catch(()=>{});}catch(_){}
 }
-function sumarDescanso(s){if(!_descFin)return;const base=_sonado?Date.now():_descFin;_sonado=false;pararAlarma();_descFin=Math.max(Date.now()+1000,base+s*1000);guardarDesc();pedirPantalla();sonarDescansoLargo((_descFin-Date.now())/1000);tickDescanso();}
-function cortarDescanso(){pararAlarma();pararLargo();sesionAudio('ambient');_descFin=0;_sonado=false;clearInterval(_descInt);_descInt=null;guardarDesc();soltarPantalla();tickDescanso();}
+function sumarDescanso(s){if(!_descFin)return;const base=_sonado?Date.now():_descFin;_sonado=false;pararAlarma();_descFin=Math.max(Date.now()+1000,base+s*1000);guardarDesc();pedirPantalla();sonarDescansoLargo((_descFin-Date.now())/1000);programarPush((_descFin-Date.now())/1000);tickDescanso();}
+function cortarDescanso(){if(_descFin&&!_sonado)cancelarPush();pararAlarma();pararLargo();sesionAudio('ambient');_descFin=0;_sonado=false;clearInterval(_descInt);_descInt=null;guardarDesc();soltarPantalla();tickDescanso();}
 // Alarma fuerte: pita cada 1,5 s durante 20 s y la pantalla parpadea en verde, hasta que toque la pantalla.
 let _alarmaInt=null;
 function alarma(){pararAlarma();document.body.classList.add('flash');const lg=largoSonando();if(!lg)pitar();let n=0;_alarmaInt=setInterval(()=>{if(!lg)pitar();if(++n>=13)pararAlarma();},1500);}
@@ -907,7 +961,7 @@ function tickDescanso(){
   if(falta>0){el.className='';$('d-txt').textContent='⏱️ '+mmss(falta);$('d-menos').style.display='';return;}
   el.className='fin';$("d-txt").textContent="💪 ¡Otra serie!";$('d-menos').style.display='none';
   if(!_sonado){_sonado=true;soltarPantalla();
-    if(falta>-5){alarma();try{navigator.vibrate&&navigator.vibrate([400,150,400,150,400]);}catch(_){}avisarFondo();}}
+    if(falta>-5){if(document.visibilityState==='visible')cancelarPush();alarma();try{navigator.vibrate&&navigator.vibrate([400,150,400,150,400]);}catch(_){}avisarFondo();}}
   if(falta<-60)cortarDescanso();
 }
 // Si la app se recargó en medio de un descanso, sigue donde estaba.
@@ -1287,6 +1341,7 @@ function pAjustes(){
     <div><label for="m-pesoMeta">Peso meta (kg)</label><input id="m-pesoMeta" inputmode="decimal" value="${v('pesoMeta')}"></div>
   </div><button class="pri" style="width:100%;margin-top:10px" onclick="guardarMetas()">Guardar metas</button></div>
   <div class="card"><h2>🔔 Aviso del descanso</h2>
+    ${htmlPush()}<div style="font-weight:700;margin-bottom:6px">Sonido con la app abierta</div>
     <div class="row" style="gap:6px">${[['fuerte','🔊 Fuerte'],['suave','🎵 Suave']].map(([k,n])=>`<button class="chip ${modoSonido()===k?'on':''}" onclick="ponerModoSonido('${k}')">${n}</button>`).join('')}</div>
     <div class="mu" style="margin-top:8px;font-size:.88rem">${modoSonido()==='fuerte'?'<b>Fuerte:</b> suena aunque estés en otra app (Instagram), con la pantalla bloqueada o con el teléfono en silencio. Para lograrlo, durante el descanso la app "reproduce" un audio mudo: <b>si estás escuchando música, se corta mientras descansás</b> (después la volvés a poner). Si en el descanso mirás un video con sonido, ese video le gana y el aviso puede no sonar.':'<b>Suave:</b> no corta la música, pero <b>sólo suena con la app abierta en la pantalla</b> y con el teléfono sin silencio.'}</div>
     <button style="margin-top:10px" onclick="probarSonido()">🔊 Probar sonido</button>

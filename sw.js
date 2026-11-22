@@ -1,6 +1,6 @@
 // Service worker de Físico: guarda la app (mismo origen) para que abra como app instalada y sin internet.
 // Cada vez que se toca index.html se sube este número: así el teléfono baja la versión nueva sola.
-const CACHE = "fisico-v38";
+const CACHE = "fisico-v39";
 const ARCHIVOS = [".", "index.html", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -33,6 +33,18 @@ self.addEventListener("fetch", (e) => {
         return resp;
       })
       .catch(() => caches.match(e.request).then((r) => r || caches.match("index.html")))
+  );
+});
+
+// Notificación que manda el servicio de avisos (worker/) cuando termina el descanso, aunque la app esté cerrada.
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (_) {}
+  e.waitUntil(
+    self.registration.showNotification(d.t || "💪 ¡A la próxima serie!", {
+      body: d.b || "Terminó el descanso.", tag: d.tag || "descanso", renotify: true,
+      icon: "icon.svg", badge: "icon.svg", vibrate: [400, 150, 400],
+    })
   );
 });
 

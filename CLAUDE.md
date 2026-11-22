@@ -58,6 +58,17 @@ Subir cada cambio a `main` con un mensaje claro.
 - Sin internet: la app muestra lo último que vio (guardado en el teléfono) y lo que se carga queda en una cola en el teléfono que se
   manda sola cuando vuelve la señal, aunque se cierre la app.
 
+## Notificación del descanso (22/11/2026, él la pidió: "quiero que llegue una notificación")
+- Una página web no puede programar avisos y el iPhone congela la app en segundo plano, así que hay un servicio aparte:
+  `worker/` (Cloudflare Worker + Durable Object, cuenta de Cloudflare de Matías, se publica solo desde este repositorio,
+  carpeta `worker`, nombre `fisico-avisos`). Al anotar una serie la app hace POST `/programar` {dev, sub, en: segundos};
+  el servicio pone una alarma y manda un Web Push cifrado (RFC 8291 + VAPID). `/cancelar` si toca Listo o si la app está
+  abierta cuando termina. `/probar` manda uno ya. `/vapid` da la llave pública.
+- SIN claves en el repositorio: las llaves VAPID se crean solas la primera vez adentro del servicio (Durable Object "llaves").
+- La dirección del servicio va en `config.avisosUrl` (no es secreta). En el teléfono: Ajustes → 🔔 Aviso del descanso →
+  Activar notificaciones (en iPhone, sólo con la app agregada a la pantalla de inicio y abierta desde ahí).
+- Probar el servicio en la nube: `cd worker && npx wrangler dev --var PERMITIR_LOCAL:1` (deja mandar a un servicio falso en localhost).
+
 ## Cómo carga Claude los datos (Matías le pasa por el chat lo que comió, entrenó, pesó y sus fotos)
 Matías quiere que Claude cargue todo (31/10/2026: "quiero que tengas acceso total. porque vos vas a cargar todos los datos").
 Se hace desde su Chrome, con la app abierta y su sesión iniciada: Ajustes → "📥 Cargar datos (lo usa Claude)" → pegar un bloque así → Cargar:
