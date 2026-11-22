@@ -46,8 +46,8 @@ Subir cada cambio a `main` con un mensaje claro.
     `m` es en qué comida del día va (la pantalla Dieta las agrupa así); el nombre va sin "Desayuno:" adelante. Las "comidas frecuentes" salen solas de lo cargado (no se guardan aparte).
   - `agua/{AAAA-MM-DD}`: mililitros tomados ese día (un número). En la carga: `"agua":{"2026-10-31":1500}` pone el total del día.
   - `config`: `{kcal, p, c, g, agua (ml, si no 3000), pesoMeta, descanso (segundos, si no 180)}` (metas por día).
-    `pesoMeta` (78 kg, lo puso él 07/11) y `ritmo` (kg por semana, 0,5): la línea dorada del gráfico de Peso.
-    También `desafio:{inicio:'2026-11-05',dias:66}` y `diasEntreno:[2,4,6]` (martes, jueves, sábado) para la pantalla Nivel.
+    `pesoMeta` (76 kg desde 22/11) y `ritmo` (kg por semana, 0,4): la línea dorada del gráfico de Peso.
+    También `desafio:{inicio:'2026-11-05',dias:66}` y `diasEntreno:[0,6]` (domingo y sábado, desde 22/11) para la pantalla Nivel.
   - `fotos/{id}`: `{f, mini: foto chiquita en texto (data:image/jpeg), nota, t}` y `fotosFull/{id}`: la foto grande (se baja sólo al abrirla).
     Las fotos van a la base, NUNCA al repositorio (es público).
 - Sin internet: la app muestra lo último que vio (guardado en el teléfono) y lo que se carga queda en una cola en el teléfono que se
@@ -87,7 +87,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 - 31/10/2026: se guarda TODO (ejercicios, pesos, series, comidas, medidas, fotos) y se tiene que poder ver después.
 - 01/11/2026: la Dieta se parece a la app que usaba antes (MyFitnessPal): semana con círculos, racha, calorías que restan, carbos/grasas/proteínas lado a lado y comidas por Desayuno/Almuerzo/Merienda/Cena/Colaciones.
 - 01/11/2026: no hay pantalla Inicio (era lo mismo que Dieta): la app arranca en Dieta, con el peso arriba. Botones: Dieta, Peso, Entreno, Fotos, Ajustes. Nada repetido.
-- 01/11/2026: las metas (calorías, proteína, carbohidratos, grasas) las pone Claude con criterio; él corrige si quiere. Objetivo: hipertrofia y definición, bajar 0,5-0,7 kg por semana. 03/11: él eligió 1600 kcal entrenando pesado. 09/11: proteína 145 g (1,8 g/kg), metas P 145, C 140, G 50; si 2 semanas seguidas pierde fuerza o energía, volver a 1700 los días de gimnasio.
+- 01/11/2026: las metas (calorías, proteína, carbohidratos, grasas) las pone Claude con criterio; él corrige si quiere. Objetivo: hipertrofia y definición, bajar 0,5-0,7 kg por semana. 03/11: él eligió 1600 kcal entrenando pesado. 09/11: proteína 145 g (1,8 g/kg), metas P 145, C 140, G 50; si 2 semanas seguidas pierde fuerza o energía, volver a 1700 los días de gimnasio. 22/11 (eligió él): bajar LENTO y recuperar músculo: 1800 kcal, P 150, C 175, G 55, pesoMeta 76, ritmo 0,4 kg/semana.
 - 31/10/2026: peso en kilos con un decimal.
 - 31/10/2026: al anotar una serie, la app avisa si superó la última vez (más peso, o el mismo peso con más repeticiones).
 - 31/10/2026: lo que come lo pasa por el chat y lo carga Claude.
@@ -99,7 +99,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
 - 15/11/2026: EL DÍA SE CARGA ENTERO CON EL PLAN, como si lo hubiera comido (pidió: "pone el día siempre anotado como si hubiera
   comido eso; si como otra cosa te aviso"). En el primer mensaje del día, cargar todas las comidas del plan que falten como reales.
   Cuando avisa otra cosa, REEMPLAZAR lo de esa comida (borrar lo del plan de esa comida y cargar lo real) y decirle cuánto le queda.
-  Plan (15/11, ≈1607 kcal, P 168): desayuno lo de siempre; almuerzo milanesa de pollo al horno 180 g + ensalada; merienda cuadril
+  Plan (22/11, ≈1804 kcal, P 175): desayuno lo de siempre; almuerzo milanesa de pollo al horno 180 g + ensalada + pan francés 70 g; merienda cuadril
   180 g + 4 claras; cena 2 barras + té; postre 4 cuadraditos de Milka.
 - 15/11/2026: "LO DE SIEMPRE" (desayuno) = café instantáneo intenso 6 g (350 ml, sin leche) + 2 barras Integra + creatina + multivitamínico. El té es a la noche, con la cena.
 - 01/11/2026: no le gustan: banana con el café (con el café quiere algo para masticar: barra o galletitas), aceite de oliva, atún al natural, yogur.
@@ -111,7 +111,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
   Pan semillado lactal: 53 g = 131 kcal, C 21, P 5,9, G 2,6, fibra 3,3, sodio 124 mg.
   Chocolate Milka (con leche): 4 cuadraditos = 25 g = 131 kcal, C 14 (azúcar agregada 11), P 1,7, G 7,6 (sat 4,4), fibra 0,6, sodio 25.
   Tiene en casa (10/11): claras de huevo (1 clara ≈ 33 g = 17 kcal, P 3,6, G 0). Sugerirlas para completar proteína con pocas calorías.
-- 02/11/2026: trabaja de 12:30 a 20:30 y sale muerto; a la mañana no puede: 02/11: decidió ir a SU gimnasio (en casa sin peso "no sirve" para él). Va 3 veces por semana, 1 hora: martes, jueves y sábados. 22/11: rutina "Full body corto" (con la energía que tiene, sólo esto): press inclinado con mancuernas 3×6-10, dominadas 3×6-10, sentadilla con barra 3×8-12 + elevaciones laterales 3×12-20 JUNTAS (biserie: `grupo:"B"` en la rutina; en Entreno van en una tarjeta y "+ Serie (los dos)" anota las dos y arranca un solo descanso). Doble progresión (la app lo calcula), descanso 3 min. 22/11: objetivo 10 % de grasa (foto 22/11 ≈ 14 %, 77,9 kg): bajada corta y rápida (1600 kcal, proteína ≥150) entrenando pesado, hasta ver abdominales (~75-76 kg, 5-6 semanas máx.); si pierde fuerza 2 entrenos seguidos → 1700; después 1900-2000 para ganar músculo. Trabaja todos los días (L-V 12:30-20:30, sáb 12:30-16:30, dom 16:30-20:30): mejores días para entrenar sábado a la tarde y domingo a la mañana. 19/11: se muda a una quinta el fin de semana del 21-22/11 (el gimnasio le queda a 15 min). Prioridad estética: pecho de arriba y hombro de costado (cintura ya angosta).
+- 02/11/2026: trabaja de 12:30 a 20:30 y sale muerto; a la mañana no puede: 02/11: decidió ir a SU gimnasio (en casa sin peso "no sirve" para él). Va 3 veces por semana, 1 hora: martes, jueves y sábados. 22/11: rutina "Full body corto" (con la energía que tiene, sólo esto): press inclinado con mancuernas 3×6-10, dominadas 3×6-10, sentadilla con barra 3×8-12 + elevaciones laterales 3×12-20 JUNTAS (biserie: `grupo:"B"` en la rutina; en Entreno van en una tarjeta y "+ Serie (los dos)" anota las dos y arranca un solo descanso). Doble progresión (la app lo calcula), descanso 3 min. 22/11: objetivo 10 % de grasa (foto 22/11 ≈ 14 %, 77,9 kg). Eligió bajar lento (1800 kcal) entrenando para recuperar el músculo que perdió (memoria muscular): fuerza que sube + cintura que baja = va bien. Entrena sábado y domingo (config.diasEntreno [0,6]) y un tercer día si tiene pilas. Trabaja todos los días (L-V 12:30-20:30, sáb 12:30-16:30, dom 16:30-20:30): mejores días para entrenar sábado a la tarde y domingo a la mañana. 19/11: se muda a una quinta el fin de semana del 21-22/11 (el gimnasio le queda a 15 min). Prioridad estética: pecho de arriba y hombro de costado (cintura ya angosta).
   Tiene: un fierro a la altura de una silla (remo invertido), sillas, el piso. Las sentadillas sin peso lo cansan mucho (3×12 y queda sin fuerza).
   Lleva años entrenando pesado. Sus marcas en el gimnasio: dominadas con 20 kg de lastre, press plano 87 kg (80 + barra de 7), sentadilla 70 kg.
 - 10/11/2026: prefiere suplementos a fruta y gastar las calorías extra en un postre que le guste (chocolate, Danette, helado).
