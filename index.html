@@ -254,8 +254,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.34';
+const APP_VERSION='1.35';
 const APP_CAMBIOS=[
+  {v:'1.35',f:'22/11',h:'15:25',c:[{n:3,t:'El aviso de fin del descanso ahora suena aunque el iPhone esté en silencio (modo Fuerte). En Ajustes → 🔔 Aviso del descanso podés elegir Fuerte o Suave (se mezcla con la música, pero en silencio no suena) y probar el sonido.'}]},
   {v:'1.34',f:'22/11',h:'15:05',c:[{n:2,t:'El récord histórico ahora es la serie que más kilos movió: peso × repeticiones (10 reps con 10 kg = 100 kg le gana a 6 reps con 12 kg = 72 kg). Se ve así: "10 kg × 10 = 100 kg".'}]},
   {v:'1.33',f:'22/11',h:'14:45',c:[{n:3,t:'Entreno: tocando el nombre de un ejercicio se abre su historial completo (gráfico, todas las veces, series y descansos). Arriba de repeticiones y peso aparece tu 🏆 récord histórico, y tocándolo se pone solo. Se guarda el descanso de cada serie, tu peso del día, kilos totales y récords. Si batís tu récord te avisa. Al terminar podés poner cómo te sentiste y una nota. Si te olvidás de tocar Terminar, se cierra solo al otro día con la hora real.'}]},
   {v:'1.32',f:'22/11',h:'13:50',c:[{n:2,t:'Las metas nuevas (1800 calorías) cuentan desde hoy 22/11. Los días anteriores se siguen midiendo con las de antes (1600) y con los días de gimnasio de antes (martes, jueves y sábado), así los círculos de la semana, la racha y las misiones de esos días no cambian.'}]},
@@ -842,9 +843,27 @@ const mmss=s=>Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 // El sonido sólo se habilita después de un toque en la pantalla (regla de los navegadores).
 function prepararAudio(){try{if(!_audio){const C=window.AudioContext||window.webkitAudioContext;if(C)_audio=new C();}if(_audio&&_audio.state==='suspended')_audio.resume();}catch(_){}}
 document.addEventListener('pointerdown',prepararAudio);
-function pitar(){if(!_audio)return;try{const t0=_audio.currentTime+0.05;for(let i=0;i<3;i++){const o=_audio.createOscillator(),g=_audio.createGain(),t=t0+i*0.35;
+function beepWebAudio(){if(!_audio)return;try{const t0=_audio.currentTime+0.05;for(let i=0;i<3;i++){const o=_audio.createOscillator(),g=_audio.createGain(),t=t0+i*0.35;
   o.type='square';o.frequency.value=i%2?1175:880;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.9,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.25);
   o.connect(g);g.connect(_audio.destination);o.start(t);o.stop(t+0.27);}}catch(_){}}
+// Aviso con un audio común (en iPhone es más confiable que lo de arriba). Modo por teléfono:
+// 'fuerte' = suena aunque el iPhone esté en silencio (corta la música mientras suena); 'suave' = se mezcla con la música, pero en silencio no suena.
+const SON_KEY='fisico_sonido_v1';
+const modoSonido=()=>{try{return localStorage.getItem(SON_KEY)||'fuerte';}catch(_){return 'fuerte';}};
+function ponerModoSonido(m){try{localStorage.setItem(SON_KEY,m);}catch(_){}pintar();probarSonido();}
+let _beepEl=null,_beepOk=false;
+function wavBeep(){const sr=22050,n=Math.round(sr*0.95),b=new Uint8Array(44+n),dv=new DataView(b.buffer);const w=(o,t)=>{for(let i=0;i<t.length;i++)b[o+i]=t.charCodeAt(i);};
+  w(0,'RIFF');dv.setUint32(4,36+n,true);w(8,'WAVEfmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,1,true);dv.setUint32(24,sr,true);dv.setUint32(28,sr,true);dv.setUint16(32,1,true);dv.setUint16(34,8,true);w(36,'data');dv.setUint32(40,n,true);
+  for(let i=0;i<n;i++){const t=i/sr;let v=0;for(let k=0;k<3;k++){const t0=k*0.33;if(t>=t0&&t<t0+0.25){const f=k%2?1175:880,env=Math.min(1,(t-t0)/0.01,(t0+0.25-t)/0.02);v=(Math.sin(2*Math.PI*f*t)>=0?1:-1)*env*0.9;}}b[44+i]=Math.round(128+v*127);}
+  return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));}
+function sesionAudio(tipo){try{if(navigator.audioSession&&navigator.audioSession.type!==tipo)navigator.audioSession.type=tipo;}catch(_){}}
+// iPhone sólo deja sonar un audio que antes arrancó con un toque: al anotar la serie se "desbloquea" (suena mudo un instante, sin cortar la música).
+function desbloquearBeep(){try{if(!_beepEl){_beepEl=new Audio(wavBeep());_beepEl.preload='auto';}if(_beepOk)return;sesionAudio('ambient');const a=_beepEl;a.muted=true;
+  const fin=()=>{try{a.pause();a.currentTime=0;}catch(_){}a.muted=false;_beepOk=true;};const pr=a.play();if(pr&&pr.then)pr.then(fin).catch(()=>{a.muted=false;});else fin();}catch(_){}}
+function pitar(){const fuerte=modoSonido()==='fuerte';sesionAudio(fuerte?'playback':'ambient');let ok=false;
+  try{if(_beepEl&&_beepOk){_beepEl.muted=false;_beepEl.volume=1;_beepEl.currentTime=0;const pr=_beepEl.play();ok=true;if(pr&&pr.catch)pr.catch(()=>beepWebAudio());}}catch(_){}
+  if(!ok)beepWebAudio();}
+function probarSonido(){prepararAudio();try{if(!_beepEl){_beepEl=new Audio(wavBeep());_beepEl.preload='auto';}_beepOk=true;}catch(_){}pitar();setTimeout(()=>sesionAudio('ambient'),1500);}
 function pedirPantalla(){try{if(navigator.wakeLock&&!_wake&&document.visibilityState==='visible')navigator.wakeLock.request('screen').then(w=>{_wake=w;w.addEventListener('release',()=>{_wake=null;});}).catch(()=>{});}catch(_){}}
 function soltarPantalla(){try{_wake&&_wake.release();}catch(_){}_wake=null;}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(_descFin){pedirPantalla();tickDescanso();}}});
@@ -853,7 +872,7 @@ function avisarFondo(){try{if(document.visibilityState==='visible'||!('Notificat
 function guardarDesc(){try{_descFin?localStorage.setItem(DESC_KEY,String(_descFin)):localStorage.removeItem(DESC_KEY);}catch(_){}}
 function correrDescanso(){clearInterval(_descInt);_descInt=setInterval(tickDescanso,250);tickDescanso();}
 function empezarDescanso(seg){
-  prepararAudio();_sonado=false;_descFin=Date.now()+seg*1000;guardarDesc();pedirPantalla();correrDescanso();
+  prepararAudio();desbloquearBeep();_sonado=false;_descFin=Date.now()+seg*1000;guardarDesc();pedirPantalla();correrDescanso();
   try{if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().catch(()=>{});}catch(_){}
 }
 function sumarDescanso(s){if(!_descFin)return;const base=_sonado?Date.now():_descFin;_sonado=false;_descFin=Math.max(Date.now()+1000,base+s*1000);guardarDesc();pedirPantalla();tickDescanso();}
@@ -861,7 +880,7 @@ function cortarDescanso(){pararAlarma();_descFin=0;_sonado=false;clearInterval(_
 // Alarma fuerte: pita cada 1,5 s durante 20 s y la pantalla parpadea en verde, hasta que toque la pantalla.
 let _alarmaInt=null;
 function alarma(){pararAlarma();document.body.classList.add('flash');pitar();let n=0;_alarmaInt=setInterval(()=>{pitar();if(++n>=13)pararAlarma();},1500);}
-function pararAlarma(){clearInterval(_alarmaInt);_alarmaInt=null;document.body.classList.remove('flash');}
+function pararAlarma(){const sonaba=!!_alarmaInt;clearInterval(_alarmaInt);_alarmaInt=null;document.body.classList.remove('flash');try{_beepEl&&_beepEl.pause();}catch(_){}if(sonaba)setTimeout(()=>sesionAudio('ambient'),300);}
 document.addEventListener('pointerdown',()=>{if(_alarmaInt)pararAlarma();},true);
 function tickDescanso(){
   const el=$('descanso');if(!el)return;
@@ -1250,6 +1269,11 @@ function pAjustes(){
     <div><label for="m-g">Grasas (g)</label><input id="m-g" inputmode="decimal" value="${v('g')}"></div>
     <div><label for="m-pesoMeta">Peso meta (kg)</label><input id="m-pesoMeta" inputmode="decimal" value="${v('pesoMeta')}"></div>
   </div><button class="pri" style="width:100%;margin-top:10px" onclick="guardarMetas()">Guardar metas</button></div>
+  <div class="card"><h2>🔔 Aviso del descanso</h2>
+    <div class="row" style="gap:6px">${[['fuerte','🔊 Fuerte'],['suave','🎵 Suave']].map(([k,n])=>`<button class="chip ${modoSonido()===k?'on':''}" onclick="ponerModoSonido('${k}')">${n}</button>`).join('')}</div>
+    <div class="mu" style="margin-top:8px;font-size:.88rem">${modoSonido()==='fuerte'?'<b>Fuerte:</b> suena aunque tengas el teléfono en silencio. Si estás escuchando música, la corta mientras suena (después la volvés a poner).':'<b>Suave:</b> suena encima de la música sin cortarla, pero <b>si el teléfono está en silencio no suena</b>.'}</div>
+    <button style="margin-top:10px" onclick="probarSonido()">🔊 Probar sonido</button>
+    <div class="mu" style="margin-top:8px;font-size:.82rem">Importante: dejá la app abierta en la pantalla mientras descansás. Si el teléfono se bloquea o pasás a otra app, no puede sonar a tiempo (la pantalla se mantiene prendida sola durante el descanso).</div></div>
   <div class="card"><h2>Sesión</h2><div class="mu">${esc(usuario&&usuario.email||'')}</div><button style="margin-top:8px" onclick="salir()">Cerrar sesión</button></div>
   ${htmlCambios(30)}
   <details class="card"><summary>📥 Cargar datos (lo usa Claude)</summary>
