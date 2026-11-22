@@ -245,8 +245,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.31';
+const APP_VERSION='1.32';
 const APP_CAMBIOS=[
+  {v:'1.32',f:'22/11',h:'13:50',c:[{n:2,t:'Las metas nuevas (1800 calorías) cuentan desde hoy 22/11. Los días anteriores se siguen midiendo con las de antes (1600) y con los días de gimnasio de antes (martes, jueves y sábado), así los círculos de la semana, la racha y las misiones de esos días no cambian.'}]},
   {v:'1.31',f:'22/11',h:'12:40',c:[{n:2,t:'Ejercicios juntos (biserie): sentadilla y elevaciones laterales van en una sola tarjeta 🔗. Cada uno tiene sus repeticiones y su peso, y el botón "+ Serie (los dos)" anota los dos a la vez y arranca un solo descanso.'}]},
   {v:'1.30',f:'19/11',h:'21:15',c:[{n:2,t:'Comparar fotos como en MyFitnessPal: las fotos van de borde a borde, más altas, con el peso y la fecha abajo. Botones − y ＋ para acercar las dos a la vez (se ve más el cuerpo) y "⛶ Pantalla completa" para verlas grandes.'}]},
   {v:'1.29',f:'19/11',h:'10:50',c:[{n:2,t:'Para borrar una comida, arrastrala hacia la izquierda: un poco muestra el botón rojo "🗑 Borrar", y si la arrastrás hasta la mitad se borra sola. Abajo aparece "Deshacer" por si te equivocaste. Anda en la lista de cada comida y en "ver qué comí".'}]},
@@ -448,7 +449,8 @@ const rutinasOrd=()=>lista(S.rutinas).sort((a,b)=>(a.orden||0)-(b.orden||0)||Str
 const entrenosOrd=()=>lista(S.entrenos).sort((a,b)=>a.f<b.f?1:a.f>b.f?-1:(b.t||0)-(a.t||0));
 const entrenoEnCurso=()=>entrenosOrd().find(e=>e.estado==='en curso');
 const comidasDe=f=>lista(S.comidas).filter(c=>c.f===f).sort((a,b)=>(a.t||0)-(b.t||0));
-const meta=k=>num((S.config||{})[k]);
+// Metas por día. Si se cambiaron, config.metasHist guarda las viejas: [{hasta:'AAAA-MM-DD',kcal,p,c,g}] → hasta esa fecha valen esas.
+const meta=(k,f)=>{const c=S.config||{};if(f&&Array.isArray(c.metasHist)){const h=c.metasHist.filter(x=>x&&x.hasta&&f<=x.hasta&&x[k]!=null).sort((a,b)=>a.hasta<b.hasta?-1:1)[0];if(h)return num(h[k]);}return num(c[k]);};
 function totales(cs){const t={kcal:0,p:0,c:0,g:0};for(const x of cs){t.kcal+=num(x.kcal)||0;t.p+=num(x.p)||0;t.c+=num(x.c)||0;t.g+=num(x.g)||0;}return t;}
 function proximaRutina(){
   const rs=rutinasOrd();if(!rs.length)return null;
@@ -795,7 +797,7 @@ const momentoAhora=()=>momentoDeHora(horaAR());
 let agregarEn='';
 // Anillo de un día: cuánto de la meta de calorías se comió (verde hasta la meta, ámbar si se pasó más de 10%).
 function anillo(f,sel){
-  const t=totales(comidasDe(f)),m=meta('kcal'),pct=m?Math.min(100,Math.round(t.kcal/m*100)):(t.kcal?100:0);
+  const t=totales(comidasDe(f)),m=meta('kcal',f),pct=m?Math.min(100,Math.round(t.kcal/m*100)):(t.kcal?100:0);
   const col=m&&t.kcal>m*1.1?'var(--amber)':'var(--accent)';
   return `<span class="anillo${sel?' sel':''}" style="background:conic-gradient(${col} ${pct}%,var(--border) 0)"><span></span></span>`;
 }
@@ -804,9 +806,11 @@ function anillo(f,sel){
 // Principales (cortan la racha): proteína ≥ meta, calorías entre 70 % y 103 % de la meta, y entrenar los días que toca.
 const DESAFIO=()=>Object.assign({inicio:'2026-11-05',dias:66},(S.config||{}).desafio||{});
 const DIAS_ENTRENO=()=>(S.config||{}).diasEntreno||[2,4,6]; // martes, jueves, sábado
-const esDiaEntreno=f=>DIAS_ENTRENO().includes(new Date(f+'T12:00:00').getDay());
+// Si cambiaron los días de gimnasio, config.diasHist guarda los viejos: [{hasta:'AAAA-MM-DD',dias:[2,4,6]}].
+const diasDe=f=>{const h=((S.config||{}).diasHist||[]).filter(x=>x&&x.hasta&&f<=x.hasta).sort((a,b)=>a.hasta<b.hasta?-1:1)[0];return h&&h.dias||DIAS_ENTRENO();};
+const esDiaEntreno=f=>diasDe(f).includes(new Date(f+'T12:00:00').getDay());
 function misionesDe(f){
-  const cs=comidasDe(f),t=totales(cs),mk=meta('kcal'),mp=meta('p'),ma=metaAgua();
+  const cs=comidasDe(f),t=totales(cs),mk=meta('kcal',f),mp=meta('p',f),ma=metaAgua();
   const ents=lista(S.entrenos).filter(e=>e.f===f&&e.estado!=='en curso'&&(e.ej||[]).some(x=>(x.series||[]).length));
   const ms=[
     {k:'prot',n:`Proteína ${mp?fmt(mp)+' g':''}`,ic:'🥩',xp:20,ppal:true,ok:!!mp&&t.p>=mp*0.98,det:`${fmt(t.p)}${mp?' / '+fmt(mp):''} g`},
@@ -991,7 +995,7 @@ function htmlDetalleDia(f){
 }
 function htmlCalMacros(t,click,tp,f){
   tp=tp||t;const hayPlan=tp.kcal!==t.kcal||tp.p!==t.p;
-  const mk=meta('kcal'),resta=mk?mk-t.kcal:null;
+  const mk=meta('kcal',f),resta=mk?mk-t.kcal:null;
   const cl=` onclick="if(event.target.closest('.detdia'))return;verDetalleDia=!verDetalleDia;pintar()" style="cursor:pointer"`;
   const MAC=[['c','Carbos','var(--amber)'],['g','Grasas','#c084fc'],['p','Proteínas','var(--blue)']];
   return `<div class="card"${cl}><div class="row sp"><span class="mu">Calorías</span><span class="mu" style="font-size:.8rem">${verDetalleDia?'ocultar ▲':'ver qué comí ▼'}</span></div>
@@ -1000,7 +1004,7 @@ function htmlCalMacros(t,click,tp,f){
     ${barra2(t.kcal,tp.kcal,mk,mk&&t.kcal>mk*1.1?'var(--amber)':'')}
     ${hayPlan?`<div class="mu fantasma" style="margin-top:6px;opacity:.75">Con el plan del día terminarías en ≈ ${fmt(tp.kcal)} cal · P ${fmt(tp.p)} · C ${fmt(tp.c)} · G ${fmt(tp.g)}</div>`:''}
     ${verDetalleDia&&f?htmlDetalleDia(f):''}</div>
-  <div class="card macros"${cl}>${MAC.map(([k,n,col])=>{const m=meta(k);return `<div><div class="mu">${n}</div><div style="white-space:nowrap"><b style="font-size:1.1rem">${fmt(t[k])} g</b>${m?` <span class="mu" style="font-size:.78rem">/ ${fmt(m)}</span>`:''}</div>${barra2(t[k],tp[k],m,col)}</div>`;}).join('')}</div>`;
+  <div class="card macros"${cl}>${MAC.map(([k,n,col])=>{const m=meta(k,f);return `<div><div class="mu">${n}</div><div style="white-space:nowrap"><b style="font-size:1.1rem">${fmt(t[k])} g</b>${m?` <span class="mu" style="font-size:.78rem">/ ${fmt(m)}</span>`:''}</div>${barra2(t[k],tp[k],m,col)}</div>`;}).join('')}</div>`;
 }
 // Encabezado con el día elegido y la semana (lo usan Inicio y Dieta: el día elegido es el mismo en las dos).
 function htmlSemana(f){

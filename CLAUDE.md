@@ -48,6 +48,8 @@ Subir cada cambio a `main` con un mensaje claro.
   - `config`: `{kcal, p, c, g, agua (ml, si no 3000), pesoMeta, descanso (segundos, si no 180)}` (metas por día).
     `pesoMeta` (76 kg desde 22/11) y `ritmo` (kg por semana, 0,4): la línea dorada del gráfico de Peso.
     También `desafio:{inicio:'2026-11-05',dias:66}` y `diasEntreno:[0,6]` (domingo y sábado, desde 22/11) para la pantalla Nivel.
+    Metas viejas por fecha: `metasHist:[{hasta:'2026-11-21',kcal:1600,p:145,c:140,g:50}]` y `diasHist:[{hasta:'2026-11-21',dias:[2,4,6]}]`:
+    hasta esa fecha la app mide con esas (cuando se cambien las metas o los días, agregar ahí las anteriores con su `hasta`).
   - `fotos/{id}`: `{f, mini: foto chiquita en texto (data:image/jpeg), nota, t}` y `fotosFull/{id}`: la foto grande (se baja sólo al abrirla).
     Las fotos van a la base, NUNCA al repositorio (es público).
 - Sin internet: la app muestra lo último que vio (guardado en el teléfono) y lo que se carga queda en una cola en el teléfono que se
