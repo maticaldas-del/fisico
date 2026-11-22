@@ -37,7 +37,7 @@ Subir cada cambio a `main` con un mensaje claro.
   - `peso/{id}`: `{f:'AAAA-MM-DD', kg, cintura, pecho, brazo, pierna, grasa, t}` (todo menos `f` es opcional; medidas en cm, grasa en %).
   - `entrenos/{id}`: `{f, rutina: id de la rutina, rutinaN: nombre, estado:'en curso'|'hecho', ej:[{n:'Press banca', plan:'4×8', grupo, series:[{r:8, kg:60, t: hora, desc: segundos desde la serie anterior}]}], t,
     inicio, fin, dur (min), descPlan (descanso elegido, s), pc (peso del cuerpo ese día), ns (series), vol (kg totales), recs (ejercicios con récord histórico),
-    energia (1 sin pilas, 2 normal, 3 con todo), nota}`. 22/11: el récord histórico (más peso; mismo peso, más reps) se muestra en cada ejercicio;
+    energia (1 sin pilas, 2 normal, 3 con todo), nota}`. 22/11: el récord histórico = la serie que más kilos movió (peso × reps; él: "10 reps con 10 kg es más que 6 reps con 12 kg"; empate → más peso; sin peso → más reps) se muestra en cada ejercicio;
     tocando el nombre se abre su historial. Un entreno "en curso" de otro día se cierra solo (con series) o se borra (vacío).
   - `rutinas/{id}`: `{n:'Pecho y tríceps', orden:1, ejercicios:[{n, series, reps, kg}]}`. La rutina que "toca" es la que sigue (por `orden`) a la última hecha.
   - `comidas/{id}`: `{f, m:'desayuno'|'almuerzo'|'merienda'|'cena'|'colacion', n:'Pollo con arroz', kcal, p, c, g, t}`.

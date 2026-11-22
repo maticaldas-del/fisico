@@ -254,8 +254,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.33';
+const APP_VERSION='1.34';
 const APP_CAMBIOS=[
+  {v:'1.34',f:'22/11',h:'15:05',c:[{n:2,t:'El récord histórico ahora es la serie que más kilos movió: peso × repeticiones (10 reps con 10 kg = 100 kg le gana a 6 reps con 12 kg = 72 kg). Se ve así: "10 kg × 10 = 100 kg".'}]},
   {v:'1.33',f:'22/11',h:'14:45',c:[{n:3,t:'Entreno: tocando el nombre de un ejercicio se abre su historial completo (gráfico, todas las veces, series y descansos). Arriba de repeticiones y peso aparece tu 🏆 récord histórico, y tocándolo se pone solo. Se guarda el descanso de cada serie, tu peso del día, kilos totales y récords. Si batís tu récord te avisa. Al terminar podés poner cómo te sentiste y una nota. Si te olvidás de tocar Terminar, se cierra solo al otro día con la hora real.'}]},
   {v:'1.32',f:'22/11',h:'13:50',c:[{n:2,t:'Las metas nuevas (1800 calorías) cuentan desde hoy 22/11. Los días anteriores se siguen midiendo con las de antes (1600) y con los días de gimnasio de antes (martes, jueves y sábado), así los círculos de la semana, la racha y las misiones de esos días no cambian.'}]},
   {v:'1.31',f:'22/11',h:'12:40',c:[{n:2,t:'Ejercicios juntos (biserie): sentadilla y elevaciones laterales van en una sola tarjeta 🔗. Cada uno tiene sus repeticiones y su peso, y el botón "+ Serie (los dos)" anota los dos a la vez y arranca un solo descanso.'}]},
@@ -626,12 +627,17 @@ function guardarPeso(){
 function borrar(ruta,pregunta){if(pregunta&&!confirm(pregunta))return;guardar(ruta,null);toast('Borrado');}
 
 // ── ENTRENO ──
-// Récord histórico de un ejercicio: la serie con más peso (y con el mismo peso, más repeticiones); sin peso, la de más repeticiones.
+// Récord histórico de un ejercicio (22/11, como lo pidió él): la serie que más kilos movió = peso × repeticiones
+// (10 reps con 10 kg = 100 kg le gana a 6 reps con 12 kg = 72 kg). Si empatan, gana la de más peso. Sin peso: la de más repeticiones.
 // salvo = id de un entreno que no se cuenta; hasta = sólo entrenos hasta esa fecha.
+const puntaje=x=>(x.kg||0)>0?x.kg*x.r:x.r;
+const superaRec=(s,rec)=>!!rec&&(puntaje(s)>puntaje(rec)||(puntaje(s)===puntaje(rec)&&s.kg>rec.kg));
+function mejorSerieRec(series){let b=null;for(const s of series||[]){const x={kg:num(s.kg)||0,r:num(s.r)||0};if(x.r&&(!b||superaRec(x,b)))b=x;}return b;}
 function recordEj(nombre,salvo,hasta){let rec=null;for(const e of entrenosOrd()){if(e.id===salvo||(hasta&&e.f>hasta))continue;const ej=(e.ej||[]).find(x=>normN(x.n)===normN(nombre));if(!ej)continue;
-  for(const s of ej.series||[]){const kg=num(s.kg)||0,r=num(s.r)||0;if(!r)continue;if(!rec||kg>rec.kg||(kg===rec.kg&&r>rec.r))rec={kg,r,f:e.f};}}return rec;}
+  const b=mejorSerieRec(ej.series);if(b&&(!rec||superaRec(b,rec)))rec=Object.assign(b,{f:e.f});}return rec;}
+// "Superaste la última vez": más peso, o el mismo peso con más repeticiones.
 const supera=(s,rec)=>!!rec&&(s.kg>rec.kg||(s.kg===rec.kg&&s.r>rec.r));
-const txtRec=x=>x?(x.kg?fmtKg(x.kg)+' kg × '+x.r:x.r+' reps sin peso'):'';
+const txtRec=x=>x?(x.kg?fmtKg(x.kg)+' kg × '+x.r+' = '+fmt(x.kg*x.r)+' kg':x.r+' reps sin peso'):'';
 const fechaCorta=f=>f===hoy()?'hoy':fechaLinda(f);
 // Descanso de cada serie = tiempo desde la serie anterior anotada en ese entreno. Se guarda al anotar (desc, en segundos);
 // en los entrenos viejos se calcula con la hora de cada serie. Sólo se muestra si es de 15 minutos o menos.
@@ -790,8 +796,8 @@ function agregarSerieGrupo(is){
     const uv=ultimaVez(ej.n,enc.id),antes=uv&&mejor(uv.series),yaHoy=mejor(ej.series),rh=recordEj(ej.n);
     const s={r,kg,t:ahora};if(desc!=null)s.desc=desc;
     ej.series.push(s);
-    // 🏆 Récord histórico: más peso que nunca, o el mismo peso con más repeticiones que nunca.
-    if(rh&&supera({kg,r},rh))hist.push((is.length>1?ej.n+': ':'')+'antes '+txtRec(rh));
+    // 🏆 Récord histórico: la serie que más kilos movió (peso × repeticiones).
+    if(rh&&superaRec({kg,r},rh))hist.push((is.length>1?ej.n+': ':'')+'antes '+txtRec(rh));
     // Aviso de "superaste la última vez" (una vez por día).
     else if(antes&&supera({kg,r},antes)&&!(yaHoy&&supera(yaHoy,antes)))recs.push((is.length>1?ej.n+': ':'')+'antes '+txtSeries([antes]));
   }
@@ -815,7 +821,7 @@ function cerrarEntreno(enc,ahora){
   const fin=lastT&&ahora-lastT>15*60000?lastT+120000:ahora;
   let ns=0,vol=0;const recs=[];
   for(const x of enc.ej||[]){const ss=x.series||[];ns+=ss.length;vol+=ss.reduce((t,s)=>t+(num(s.kg)||0)*(num(s.r)||0),0);
-    const b=mejor(ss),ant=recordEj(x.n,enc.id,enc.f);if(b&&b.r&&ant&&supera(b,ant))recs.push(x.n);}
+    const b=mejorSerieRec(ss),ant=recordEj(x.n,enc.id,enc.f);if(b&&ant&&superaRec(b,ant))recs.push(x.n);}
   const o=Object.assign({},enc,{estado:'hecho',fin,dur:Math.max(1,Math.round((fin-inicioEnc(enc))/60000)),ns,vol:Math.round(vol),recs});
   if(o.pc==null){const pc=pesoDeFecha(enc.f);if(pc&&num(pc.kg))o.pc=num(pc.kg);}
   guardarEnc(o);
