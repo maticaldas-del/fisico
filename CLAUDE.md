@@ -22,6 +22,8 @@ No tiene nada que ver con CYC (su negocio), pero está armada igual que su panel
 3. Subir el número de `CACHE` en `sw.js` (fisico-v1 → fisico-v2…).
 La app mira `sw.js` cada 2 minutos y al volver a la pantalla: si cambió, se recarga sola (no mientras escribe; a los 3 minutos tapa
 la pantalla con un botón "Actualizar"). Normalmente NO hace falta decirle "actualizá la app".
+22/11: al recargarse sola guarda y devuelve pantalla, scroll, historiales abiertos y lo escrito (sessionStorage `fisico_ui_v1`);
+se puede recargar también en el descanso (el reloj vive en el teléfono). Si abre la app con un entreno en curso, arranca en Entreno.
 
 ## Antes de decir que algo anda
 Abrirla en el navegador, mirarla en 360 px y en 1200 px, revisar que no haya errores en la consola.

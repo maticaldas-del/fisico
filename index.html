@@ -254,8 +254,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.38';
+const APP_VERSION='1.39';
 const APP_CAMBIOS=[
+  {v:'1.39',f:'22/11',h:'17:05',c:[{n:2,t:'Cuando la app se actualiza sola, quedás exactamente donde estabas: misma pantalla, mismo lugar, historiales abiertos y lo que estabas escribiendo. El entreno y los relojes siguen. Si abrís la app con un entreno en curso, arranca directo en Entreno.'}]},
   {v:'1.38',f:'22/11',h:'16:40',c:[{n:2,t:'La app ya no hace ningún sonido, así nunca te corta la música (ni al tocar + Serie). El aviso del descanso es la notificación; con la app abierta, la pantalla parpadea en verde.'}]},
   {v:'1.37',f:'22/11',h:'16:20',c:[{n:3,t:'Notificación de verdad al terminar el descanso, aunque estés en Instagram o con la app cerrada. Se activa en Ajustes → 🔔 Aviso del descanso → Activar notificaciones (en iPhone, con la app en la pantalla de inicio).'}]},
   {v:'1.36',f:'22/11',h:'15:45',c:[{n:3,t:'El aviso del descanso ahora suena aunque estés en otra app (por ejemplo Instagram) o con la pantalla bloqueada (modo Fuerte). Mientras descansás la música se corta; si preferís que no, en Ajustes elegí Suave (pero sólo suena con la app abierta).'}]},
@@ -418,11 +419,29 @@ function pintar(){
   if(editando()){_pendiente=true;return;}
   _pendiente=false;
   try{cerrarEntrenosViejos();}catch(_){}
+  // Si abre la app (sin elegir pantalla) y tiene un entreno en curso, arranca directo en Entreno.
+  if(_abrirEntreno&&S.entrenos){_abrirEntreno=false;if(entrenoEnCurso())pagina='entreno';}
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===pagina));
   const f={peso:pPeso,entreno:pEntreno,dieta:pDieta,fotos:pFotos,ajustes:pAjustes,nivel:pNivel}[pagina]||pDieta;
+  const escrito=camposEscritos();
   $('app').innerHTML=f();
+  devolverCampos(escrito);
   if(pagina==='fotos')pintarMiniaturas();
+  restaurarUI();
 }
+// Lo que escribió en un casillero (repeticiones, peso, nota…) y todavía no guardó no se pierde cuando la pantalla
+// se vuelve a dibujar (llegan datos nuevos) ni cuando la app se actualiza sola. data-h = series hechas de ese ejercicio:
+// si ya anotó la serie, el casillero vuelve a lo recomendado.
+document.addEventListener('input',e=>{const t=e.target;if(t&&t.id&&t.closest&&t.closest('#app'))t.dataset.sucio='1';});
+function camposEscritos(){const o={};document.querySelectorAll('#app input[data-sucio],#app textarea[data-sucio]').forEach(el=>{if(el.id)o[el.id]={v:el.value,h:el.dataset.h||''};});return o;}
+function devolverCampos(o){for(const id in o){const el=document.getElementById(id);if(el&&(el.dataset.h||'')===o[id].h){el.value=o[id].v;el.dataset.sucio='1';}}}
+// Antes de que la app se actualice sola, guarda dónde estaba (pantalla, scroll, historiales abiertos y lo escrito) y
+// después de recargar lo deja igual. El entreno y su reloj viven en la base y el descanso en el teléfono: siguen solos.
+const UI_KEY='fisico_ui_v1';let _abrirEntreno=false,_restaurar=null;
+function guardarEstadoUI(){try{sessionStorage.setItem(UI_KEY,JSON.stringify({t:Date.now(),pagina,y:window.scrollY,hist:[...histAb],campos:camposEscritos()}));}catch(_){}}
+function leerEstadoUI(){try{const o=JSON.parse(sessionStorage.getItem(UI_KEY)||'null');sessionStorage.removeItem(UI_KEY);return o&&Date.now()-o.t<10*60000?o:null;}catch(_){return null;}}
+function restaurarUI(){const o=_restaurar;if(!o||(o.pagina==='entreno'&&!entrenoEnCurso()&&!S.entrenos))return;_restaurar=null;
+  devolverCampos(o.campos||{});requestAnimationFrame(()=>window.scrollTo(0,o.y||0));}
 document.addEventListener('focusout',()=>setTimeout(()=>{if(_pendiente)pintar();},250));
 function ir(p){pagina=p;if(location.hash!=='#'+p)history.replaceState(null,'','#'+p);window.scrollTo(0,0);pintar();}
 window.addEventListener('hashchange',()=>{const p=location.hash.slice(1);if(p&&p!==pagina){pagina=p;pintar();}});
@@ -702,8 +721,8 @@ function pEntreno(){
         <div>${(ej.series||[]).map((s,j)=>`<span class="serie">${txtSerieH(s,dz)}<button class="x" onclick="borrarSerie(${i},${j})" aria-label="Borrar serie">✕</button></span>`).join('')}</div>
         ${rec?`<button class="recbtn" onclick="usarRecord(${i})">🏆 Récord histórico: <b>${txtRec(rec)}</b> · ${fechaCorta(rec.f)} <span class="mu">· tocá para usarlo</span></button>`:''}
         <div class="row" style="margin-top:8px">
-          <div class="campo"><label for="r-${i}">Repeticiones</label><input id="r-${i}" inputmode="numeric" value="${repPre!=null?esc(String(repPre)):''}"></div>
-          <div class="campo"><label for="k-${i}">Peso (kg)</label><input id="k-${i}" inputmode="decimal" value="${kgPre!=null?esc(String(kgPre).replace('.',',')):''}"></div>`};
+          <div class="campo"><label for="r-${i}">Repeticiones</label><input id="r-${i}" data-h="${hechas}" inputmode="numeric" value="${repPre!=null?esc(String(repPre)):''}"></div>
+          <div class="campo"><label for="k-${i}">Peso (kg)</label><input id="k-${i}" data-h="${hechas}" inputmode="decimal" value="${kgPre!=null?esc(String(kgPre).replace('.',',')):''}"></div>`};
     };
     const ejs=enc.ej||[];
     for(let i=0;i<ejs.length;i++){
@@ -1400,11 +1419,10 @@ function vigilarVersion(){
     const tapar=()=>{if(tapada)return;tapada=true;const d=document.createElement('div');
       d.style.cssText='position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:16px';
       d.innerHTML='<div class="card" style="max-width:340px;text-align:center"><div style="font-size:1.6rem">🔄</div><p>Hay una versión nueva de la app.</p><button class="pri" style="width:100%">Actualizar</button></div>';
-      d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);};
+      d.querySelector('button').onclick=()=>{guardarEstadoUI();location.reload();};document.body.appendChild(d);};
     const recargar=()=>{if(!nueva||document.visibilityState!=='visible')return;
-      // Durante un descanso no se recarga (se cortaría el sonido); se espera sin contar esos minutos.
-      if(_descFin){desde=Date.now();setTimeout(recargar,5000);return;}
-      if(!editando()&&!leerCola().length){location.reload();return;}
+      // Se puede recargar en cualquier momento (también en el descanso: la app ya no hace sonido y el reloj sigue solo).
+      if(!editando()&&!leerCola().length){guardarEstadoUI();location.reload();return;}
       if(Date.now()-desde>3*60*1000){tapar();return;}
       setTimeout(recargar,2000);};
     const marcar=()=>{if(!nueva)desde=Date.now();nueva=true;setTimeout(recargar,800);};
@@ -1424,6 +1442,9 @@ function vigilarVersion(){
 // ── ARRANQUE ──
 window.addEventListener('load',()=>{
   const h=location.hash.slice(1);if(h)pagina=h;
+  _restaurar=leerEstadoUI();
+  if(_restaurar){pagina=_restaurar.pagina||pagina;(_restaurar.hist||[]).forEach(k=>histAb.add(k));}
+  else if(!h)_abrirEntreno=true;
   vigilarVersion();
   const hayCache=leerCache();
   try{
