@@ -110,6 +110,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:.9rem;min-height:36p
 .nut.pasado .nn{color:var(--red)}
 .detdia{margin-top:12px;border-top:1px solid var(--border);padding-top:6px;cursor:default}
 .detm{padding:8px 0;border-bottom:1px solid var(--border)}
+.biserie{border-color:var(--blue)}.bisep{border-top:1px dashed var(--border2);margin:12px 0}
 /* Arrastrar a la izquierda para borrar (comidas) */
 .desl{position:relative;overflow:hidden;touch-action:pan-y}
 .lista>div.desl{display:block;padding:0}
@@ -244,8 +245,9 @@ body.con-desc #toast{bottom:calc(150px + env(safe-area-inset-bottom))}
 // ── LA VERSIÓN Y LOS CAMBIOS ──
 // Cada vez que se toca este archivo: se sube APP_VERSION, se agrega un renglón ARRIBA en APP_CAMBIOS (fecha y hora de
 // Argentina, en castellano llano) y se sube CACHE en sw.js. n: 1 leve · 2 mediano · 3 importante.
-const APP_VERSION='1.30';
+const APP_VERSION='1.31';
 const APP_CAMBIOS=[
+  {v:'1.31',f:'22/11',h:'12:40',c:[{n:2,t:'Ejercicios juntos (biserie): sentadilla y elevaciones laterales van en una sola tarjeta 🔗. Cada uno tiene sus repeticiones y su peso, y el botón "+ Serie (los dos)" anota los dos a la vez y arranca un solo descanso.'}]},
   {v:'1.30',f:'19/11',h:'21:15',c:[{n:2,t:'Comparar fotos como en MyFitnessPal: las fotos van de borde a borde, más altas, con el peso y la fecha abajo. Botones − y ＋ para acercar las dos a la vez (se ve más el cuerpo) y "⛶ Pantalla completa" para verlas grandes.'}]},
   {v:'1.29',f:'19/11',h:'10:50',c:[{n:2,t:'Para borrar una comida, arrastrala hacia la izquierda: un poco muestra el botón rojo "🗑 Borrar", y si la arrastrás hasta la mitad se borra sola. Abajo aparece "Deshacer" por si te equivocaste. Anda en la lista de cada comida y en "ver qué comí".'}]},
   {v:'1.28',f:'15/11',h:'13:40',c:[{n:2,t:'Vitaminas y minerales: ahora muestran también el MÁXIMO por día (lo que pasado puede hacer mal). La barra tiene dos rayitas: la meta y el tope. Entre las dos está bien (verde); si te pasás del tope se pone en rojo con ⚠️.'}]},
@@ -613,7 +615,9 @@ function pEntreno(){
   let h='<h1>Entreno</h1>';
   if(enc){
     h+=`<div class="card"><div class="row sp" style="flex-wrap:nowrap"><h2 style="margin:0">${esc(enc.rutinaN||'Entreno')} · ${fechaLinda(enc.f)}</h2><b id="ent-reloj" class="entreloj">⏱️ ${durTxt(Date.now()-inicioEnc(enc))}</b></div></div>`;
-    (enc.ej||[]).forEach((ej,i)=>{
+    // Cada ejercicio es una tarjeta. Si dos seguidos tienen el mismo "grupo" (biserie), van en UNA tarjeta y un solo
+    // botón anota la serie de los dos (cada uno con sus repeticiones y su peso) y arranca un solo descanso.
+    const bloque=(ej,i)=>{
       const uv=ultimaVez(ej.n,enc.id),cj=consejoEj(ej,enc.id);
       const hechas=(ej.series||[]).length,ultimaHoy=hechas?ej.series[hechas-1]:null;
       // Cada serie arranca con lo que hizo ESA serie la vez anterior (serie 1 → 1.ª de la última vez, etc.).
@@ -622,16 +626,29 @@ function pEntreno(){
       const repPre=ref?num(ref.r):null;
       const rg=rangoDe(ej.plan),completo=rg&&hechas>=rg.series;
       const plan=ej.plan?`<span class="mu"> · plan ${esc(ej.plan)}</span>`:'';
-      h+=`<div class="card${completo?' ejok':''}"><div class="row sp"><b>${completo?'✓ ':''}${esc(ej.n)}</b>${plan}</div>
+      return {completo,html:`<div class="row sp"><b>${completo?'✓ ':''}${esc(ej.n)}</b>${plan}</div>
         <div class="mu">${uv?'La última vez ('+fechaLinda(uv.f)+'): '+txtSeries(uv.series):'Primera vez que lo hacés'}</div>
         ${cj&&!hechas?`<div class="consejo ${cj.tipo}">${cj.txt}</div>`:''}
         <div>${(ej.series||[]).map((s,j)=>`<span class="serie">${s.r}×${num(s.kg)?fmtKg(num(s.kg))+' kg':'sin peso'}<button class="x" onclick="borrarSerie(${i},${j})" aria-label="Borrar serie">✕</button></span>`).join('')}</div>
         <div class="row" style="margin-top:8px">
           <div class="campo"><label for="r-${i}">Repeticiones</label><input id="r-${i}" inputmode="numeric" value="${repPre!=null?esc(String(repPre)):''}"></div>
-          <div class="campo"><label for="k-${i}">Peso (kg)</label><input id="k-${i}" inputmode="decimal" value="${kgPre!=null?esc(String(kgPre).replace('.',',')):''}"></div>
+          <div class="campo"><label for="k-${i}">Peso (kg)</label><input id="k-${i}" inputmode="decimal" value="${kgPre!=null?esc(String(kgPre).replace('.',',')):''}"></div>`};
+    };
+    const ejs=enc.ej||[];
+    for(let i=0;i<ejs.length;i++){
+      const ej=ejs[i],otro=ejs[i+1];
+      if(ej.grupo&&otro&&otro.grupo===ej.grupo){
+        const A=bloque(ej,i),B=bloque(otro,i+1);
+        h+=`<div class="card biserie${A.completo&&B.completo?' ejok':''}"><div class="mu" style="margin-bottom:6px">🔗 <b>Juntos:</b> una serie = hacés los dos, uno atrás del otro, y después descansás</div>
+          ${A.html}</div><div class="bisep"></div>${B.html}</div>
+          <button class="pri" style="width:100%;margin-top:10px" onclick="agregarSerieGrupo([${i},${i+1}])">+ Serie (los dos)</button></div>`;
+        i++;continue;
+      }
+      const A=bloque(ej,i);
+      h+=`<div class="card${A.completo?' ejok':''}">${A.html}
           <button class="pri" style="align-self:flex-end" onclick="agregarSerie(${i})">+ Serie</button>
         </div></div>`;
-    });
+    }
     h+=`<div class="card"><label for="e-nuevo">Agregar otro ejercicio</label><div class="row"><input id="e-nuevo" class="campo" placeholder="Ej: Curl de bíceps"><button onclick="agregarEjercicio()">Agregar</button></div></div>
       <button class="pri" style="width:100%" onclick="terminarEntreno()">Terminar entreno</button>
       <button class="peligro chico" style="width:100%;margin-top:10px" onclick="borrar('entrenos/${enc.id}','¿Descartar el entreno de hoy?')">Descartar</button>`;
@@ -641,7 +658,7 @@ function pEntreno(){
       ${prox?`<div class="mu" style="margin-top:8px">Te toca: <b>${esc(prox.n)}</b> (la que sigue a la última que hiciste)</div>`:''}`:'<div class="mu">Todavía no hay rutinas: las armamos por el chat.</div>'}
       <button style="margin-top:10px" onclick="empezarEntreno('')">Entreno libre</button></div>`;
     h+=GUIA_PROGRESO;
-    if(rs.length)h+=`<details class="card"><summary>Ver las rutinas</summary>${rs.map(r=>`<div style="margin:10px 0"><b>${esc(r.n)}</b><div class="mu">${(r.ejercicios||[]).map(e=>esc(e.n)+(e.series?' '+e.series+'×'+(e.reps||''):'')).join(' · ')}</div></div>`).join('')}</details>`;
+    if(rs.length)h+=`<details class="card"><summary>Ver las rutinas</summary>${rs.map(r=>`<div style="margin:10px 0"><b>${esc(r.n)}</b><div class="mu">${(r.ejercicios||[]).map(e=>esc(e.n)+(e.series?' '+e.series+'×'+(e.reps||''):'')+(e.grupo?' 🔗':'')).join(' · ')}</div></div>`).join('')}</details>`;
   }
   // HISTORIAL: todo lo que hizo, por ejercicio (cada día con todas las series, mejor serie, fuerza estimada y kilos totales)
   // y la lista completa de entrenos agrupada por mes.
@@ -681,27 +698,33 @@ setInterval(()=>{const el=$('ent-reloj'),e=entrenoEnCurso();if(el&&e)el.textCont
 function empezarEntreno(rid){
   if(entrenoEnCurso()){ir('entreno');return;}
   const r=rid?S.rutinas[rid]:null;
-  const ej=r?(r.ejercicios||[]).map(e=>({n:e.n,plan:(e.series?e.series+'×'+(e.reps||''):'')+(e.kg?' con '+e.kg+' kg':''),series:[]})):[];
+  const ej=r?(r.ejercicios||[]).map(e=>Object.assign({n:e.n,plan:(e.series?e.series+'×'+(e.reps||''):'')+(e.kg?' con '+e.kg+' kg':''),series:[]},e.grupo?{grupo:e.grupo}:{})):[];
   guardar('entrenos/'+nuevoId(),{f:hoy(),t:Date.now(),inicio:Date.now(),estado:'en curso',rutina:rid||'',rutinaN:r?r.n:'Libre',ej});
   ir('entreno');
 }
 function guardarEnc(enc){const o=Object.assign({},enc);delete o.id;guardar('entrenos/'+enc.id,o);}
 const hayAlgunaSerie=e=>(e.ej||[]).some(x=>(x.series||[]).length);
-function agregarSerie(i){
+function agregarSerie(i){agregarSerieGrupo([i]);}
+function agregarSerieGrupo(is){
   const enc=entrenoEnCurso();if(!enc)return;
-  const r=num($('r-'+i).value),kg=num($('k-'+i).value);
-  if(!r||r<1){toast('Poné las repeticiones','err');return;}
-  const ej=enc.ej[i];ej.series=ej.series||[];
-  const uv=ultimaVez(ej.n,enc.id),antes=uv&&mejor(uv.series),yaHoy=mejor(ej.series);
+  const datos=is.map(i=>({i,r:num($('r-'+i).value),kg:num($('k-'+i).value)||0}));
+  const falta=datos.find(d=>!d.r||d.r<1);
+  if(falta){toast(is.length>1?'Poné las repeticiones de '+enc.ej[falta.i].n:'Poné las repeticiones','err');return;}
   if(!enc.inicio&&!hayAlgunaSerie(enc))enc.inicio=Date.now()-60000;
-  ej.series.push({r,kg:kg||0,t:Date.now()});
+  const recs=[];
+  for(const {i,r,kg} of datos){
+    const ej=enc.ej[i];ej.series=ej.series||[];
+    const uv=ultimaVez(ej.n,enc.id),antes=uv&&mejor(uv.series),yaHoy=mejor(ej.series);
+    ej.series.push({r,kg,t:Date.now()});
+    // Aviso de récord: más peso que lo mejor de la última vez, o el mismo peso con más repeticiones (y que no se haya avisado hoy).
+    const supera=b=>b&&(kg>b.kg||(kg===b.kg&&r>b.r));
+    if(antes&&supera(antes)&&!(yaHoy&&(yaHoy.kg>antes.kg||(yaHoy.kg===antes.kg&&yaHoy.r>antes.r))))recs.push((is.length>1?ej.n+': ':'')+'antes '+txtSeries([antes]));
+  }
   document.activeElement&&document.activeElement.blur();
   guardarEnc(enc);
   empezarDescanso(descSeg());
-  // Aviso de récord: más peso que lo mejor de la última vez, o el mismo peso con más repeticiones (y que no se haya avisado hoy).
-  const k=kg||0,supera=b=>b&&(k>b.kg||(k===b.kg&&r>b.r));
-  if(antes&&supera(antes)&&!(yaHoy&&(yaHoy.kg>antes.kg||(yaHoy.kg===antes.kg&&yaHoy.r>antes.r))))toast('🔥 ¡Superaste la última vez! ('+txtSeries([antes])+')','ok',4000);
-  else toast('Serie anotada');
+  if(recs.length)toast('🔥 ¡Superaste la última vez! ('+recs.join(' · ')+')','ok',4500);
+  else toast(is.length>1?'Serie anotada (los dos)':'Serie anotada');
 }
 function borrarSerie(i,j){const enc=entrenoEnCurso();if(!enc)return;enc.ej[i].series.splice(j,1);guardarEnc(enc);}
 function agregarEjercicio(){const enc=entrenoEnCurso();const n=$('e-nuevo').value.trim();if(!enc||!n)return;enc.ej=enc.ej||[];enc.ej.push({n,series:[]});document.activeElement&&document.activeElement.blur();guardarEnc(enc);}
