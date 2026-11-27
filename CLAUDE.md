@@ -123,6 +123,7 @@ En la nube no hay Chrome: se usa `tools/fisico.py`, que habla directo con la bas
   180 g + 4 claras; cena 2 barras + té; postre 4 cuadraditos de Milka.
 - 27/11/2026: MÁXIMO 4 BARRAS POR DÍA ("nunca puedo comer más de 4"). Si ya comió 4, cambiar lo que queda del plan de ese día
   (las barras de la cena → carne: churrasco, cuadril o milanesa con las mismas calorías) y decirle qué le queda.
+  El té va SOLO con las barras de la cena: si no hay barras, no hay té (sacarlo también del agua del día).
 - 15/11/2026: "LO DE SIEMPRE" (desayuno) = café instantáneo intenso 6 g (350 ml, sin leche) + 2 barras Integra + creatina + multivitamínico. El té es a la noche, con la cena.
 - 01/11/2026: no le gustan: banana con el café (con el café quiere algo para masticar: barra o galletitas), aceite de oliva, atún al natural, yogur.
 - 01/11/2026: café, té, mate y demás bebidas sin alcohol cuentan como agua: al cargarlos, Claude suma su volumen al agua del día. Medidas de Matías: un café = 350 ml, un té = 350 ml, un vaso de agua = 250 ml (02/11).
